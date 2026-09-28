@@ -1,118 +1,105 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const { auth } = require('../middleware/auth');
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 
+const prisma = new PrismaClient();
 const router = express.Router();
 
-// Generate JWT Token
+const JWT_SECRET = process.env.JWT_SECRET || 'grocery_mart_secret_key_2024';
+
 const generateToken = (userId) => {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' });
 };
 
-// @route   POST /api/auth/signup
-// @desc    Register a new user
-// @access  Public
+// POST /api/auth/signup
 router.post('/signup', async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    // Validation
     if (!username || !email || !password) {
-      return res.status(400).json({ message: 'Please provide username, email, and password' });
+      return res.status(400).json({ message: 'Please provide all fields' });
     }
 
-    if (username.trim().length < 2) {
-      return res.status(400).json({ message: 'Username must be at least 2 characters' });
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ message: 'Please enter a valid email address' });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({ message: 'Password must be at least 6 characters' });
-    }
-
-    // Check if user already exists by email or username
-    const existingUser = await User.findOne({
-      $or: [{ email: email.toLowerCase() }, { username: username.trim() }]
+    // Check if user exists
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: email.toLowerCase() },
+          { username: username.trim() }
+        ]
+      }
     });
+
     if (existingUser) {
-      return res.status(400).json({ message: 'User with this email or username already exists' });
+      return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Create new user
-    const user = new User({
-      username: username.trim(),
-      email: email.toLowerCase(),
-      password
-    });
-    await user.save();
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Generate token
-    const token = generateToken(user._id);
+    // Create user
+    const user = await prisma.user.create({
+      data: {
+        username: username.trim(),
+        email: email.toLowerCase(),
+        password: hashedPassword
+      }
+    });
+
+    const token = generateToken(user.id);
 
     res.status(201).json({
       message: 'Account created successfully',
       token,
       user: {
-        id: user._id,
+        id: user.id,
         username: user.username,
-        name: user.username,
-        email: user.email
+        email: user.email,
+        name: user.username
       }
     });
   } catch (error) {
     console.error('Signup error:', error);
-    if (error && error.code === 11000) {
-      const duplicateField = Object.keys(error.keyPattern || {})[0];
-      return res.status(400).json({
-        message: duplicateField
-          ? `${duplicateField} is already in use`
-          : 'Email or username already exists'
-      });
-    }
     res.status(500).json({ message: 'Server error during registration' });
   }
 });
 
-// @route   POST /api/auth/login
-// @desc    Login user
-// @access  Public
+// POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validation
     if (!email || !password) {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
 
     // Find user
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() }
+    });
+
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
     // Check password
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Generate token
-    const token = generateToken(user._id);
+    const token = generateToken(user.id);
 
     res.json({
       message: 'Login successful',
       token,
       user: {
-        id: user._id,
+        id: user.id,
         username: user.username,
-        name: user.username,
         email: user.email,
-        address: user.address
+        name: user.username
       }
     });
   } catch (error) {
@@ -121,64 +108,34 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// @route   GET /api/auth/me
-// @desc    Get current user
-// @access  Private
-router.get('/me', auth, async (req, res) => {
+// GET /api/auth/me
+router.get('/me', async (req, res) => {
   try {
-    res.json({
-      user: {
-        id: req.user._id,
-        username: req.user.username,
-        name: req.user.username,
-        email: req.user.email,
-        address: req.user.address
-      }
-    });
-  } catch (error) {
-    console.error('Get user error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// @route   PUT /api/auth/update
-// @desc    Update user profile
-// @access  Private
-router.put('/update', auth, async (req, res) => {
-  try {
-    const { username, name, address } = req.body;
+    const token = req.header('Authorization')?.replace('Bearer ', '');
     
-    const updateData = {};
-    if (username || name) updateData.username = (username || name).trim();
-    if (address) updateData.address = address;
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
 
-    const user = await User.findByIdAndUpdate(
-      req.userId,
-      { $set: updateData },
-      { new: true, runValidators: true }
-    ).select('-password');
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
     res.json({
-      message: 'Profile updated successfully',
       user: {
-        id: user._id,
+        id: user.id,
         username: user.username,
-        name: user.username,
         email: user.email,
-        address: user.address
+        name: user.username
       }
     });
   } catch (error) {
-    console.error('Update user error:', error);
-    if (error && error.code === 11000) {
-      const duplicateField = Object.keys(error.keyPattern || {})[0];
-      return res.status(400).json({
-        message: duplicateField
-          ? `${duplicateField} is already in use`
-          : 'Username already exists'
-      });
-    }
-    res.status(500).json({ message: 'Server error during update' });
+    res.status(401).json({ message: 'Invalid token' });
   }
 });
 

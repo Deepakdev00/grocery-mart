@@ -1,32 +1,39 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
-const LoginModal = ({ onClose, onLoginSuccess }) => {
+const LoginModal = ({ onClose, onLoginSuccess, initialIsSignUp = false }) => {
 
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(initialIsSignUp);
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const { login, signup } = useAuth();
+  const { success, error: showError } = useToast();
 
   const handleContinue = async () => {
     setError("");
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    // Allow simple email or any text for demo purposes
+    if (email.trim().length < 3) {
       setError("Please enter a valid email address");
+      showError("Please enter a valid email address");
       return;
     }
 
     if (isSignUp && username.trim().length < 2) {
       setError("Please enter a username with at least 2 characters");
+      showError("Username must be at least 2 characters");
       return;
     }
 
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
+      showError("Password must be at least 6 characters");
       return;
     }
 
@@ -35,15 +42,17 @@ const LoginModal = ({ onClose, onLoginSuccess }) => {
     try {
       if (isSignUp) {
         await signup(username, email, password);
-        alert(`Account Created Successfully for ${username}!`);
+        success(`Account created successfully! Welcome ${username}! 🎉`);
       } else {
         await login(email, password);
-        alert(`Login Successful!`);
+        success(`Login successful! Welcome back! 👋`);
       }
       if (onLoginSuccess) onLoginSuccess();
       onClose();
     } catch (err) {
-      setError(err.message || "Something went wrong");
+      const errorMsg = err.message || "Something went wrong";
+      setError(errorMsg);
+      showError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -112,21 +121,40 @@ const LoginModal = ({ onClose, onLoginSuccess }) => {
         </div>
 
         {/* Password Input */}
-        <div style={{marginTop: '15px'}}>
-            <input 
-                type="password" 
-                placeholder="Enter password (min 6 characters)" 
+        <div style={{marginTop: '15px', position: 'relative'}}>
+            <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter password (min 6 characters)"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)} 
+                onChange={(e) => setPassword(e.target.value)}
                 style={{
-                  width:'100%', 
-                  padding:'12px', 
-                  border:'1px solid #ddd', 
-                  borderRadius:'8px', 
+                  width:'100%',
+                  padding:'12px 40px 12px 12px',
+                  border:'1px solid #ddd',
+                  borderRadius:'8px',
                   outline:'none',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
                 }}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              style={{
+                position: 'absolute',
+                right: '10px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '18px',
+                padding: '0'
+              }}
+              title={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? '👁️' : '👁️‍🗨️'}
+            </button>
         </div>
 
         {/* Continue Button */}

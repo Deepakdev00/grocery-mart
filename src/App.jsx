@@ -10,20 +10,29 @@ import LoginModal from './components/LoginModal';
 import PaymentModal from './components/PaymentModal';
 import MyOrders from './components/MyOrders';
 import Wishlist from './components/Wishlist';
+import AdminPanel from './components/AdminPanel';
+import ProductDetail from './components/ProductDetail';
+import UserProfile from './pages/UserProfile';
+import SupportCenter from './pages/SupportCenter';
+import AboutUs from './pages/AboutUs';
+import ContactUs from './pages/ContactUs';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { AdminProvider } from './context/AdminContext';
+import { ThemeProvider } from './context/ThemeContext';
+import ToastProvider from './context/ToastContext';
 import { cartAPI } from './services/api';
 
 function AppContent() {
-
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [loginModalState, setLoginModalState] = useState({ isOpen: false, isSignUp: false });
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("veg");
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // Navigation State
-  const [activeView, setActiveView] = useState("home"); // "home" | "orders" | "wishlist"
+  // Navigation State: "home" | "about" | "contact" | "orders" | "wishlist" | "profile" | "support" | "admin"
+  const [activeView, setActiveView] = useState("home");
   const [activeOrderId, setActiveOrderId] = useState(null);
 
   // Wishlist State (Local Storage)
@@ -45,7 +54,7 @@ function AppContent() {
 
   const toggleWishlist = useCallback((item) => {
     if (!isAuthenticated) {
-      setIsLoginOpen(true);
+      setLoginModalState({ isOpen: true, isSignUp: false });
       return;
     }
     setWishlist(prev => {
@@ -57,15 +66,14 @@ function AppContent() {
       }
     });
   }, [isAuthenticated]);
+
   useEffect(() => {
     const loadCart = async () => {
       if (isAuthenticated) {
         try {
-          // Sync local cart to server if exists
           if (cart.length > 0) {
             await syncCartToServer(cart);
           }
-          // Fetch cart from server
           const data = await cartAPI.getCart();
           if (data.cart && data.cart.items) {
             setCart(data.cart.items.map(item => ({
@@ -93,7 +101,6 @@ function AppContent() {
     });
     setIsCartOpen(true);
 
-    // Sync with server if authenticated
     if (isAuthenticated) {
       try {
         await cartAPI.addToCart(product);
@@ -113,7 +120,6 @@ function AppContent() {
       return item;
     }).filter((item) => item.qty > 0));
 
-    // Sync with server if authenticated
     if (isAuthenticated) {
       try {
         const currentItem = cart.find(item => item.id === id);
@@ -131,7 +137,6 @@ function AppContent() {
     setCart([]);
     setIsPaymentOpen(false);
 
-    // Clear cart on server if authenticated
     if (isAuthenticated) {
       try {
         await cartAPI.clearCart();
@@ -139,7 +144,6 @@ function AppContent() {
         console.error('Failed to clear cart:', error);
       }
 
-      // Navigate to orders and highlight the new order if created
       if (paymentData && paymentData.id) {
         setActiveOrderId(paymentData.id);
       } else {
@@ -147,13 +151,11 @@ function AppContent() {
       }
       setActiveView('orders');
     } else {
-      // if not authenticated, maybe just show home since history is protected
       setActiveView('home');
     }
   }, [isAuthenticated]);
 
   const handleLoginSuccess = useCallback(() => {
-    // Sync cart after login
     if (cart.length > 0) {
       syncCartToServer(cart);
     }
@@ -164,7 +166,6 @@ function AppContent() {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
 
-
   const allProducts = Object.values(products).flat();
 
   const displayedProducts = searchQuery
@@ -173,21 +174,42 @@ function AppContent() {
 
   return (
     <div className="app-container">
-
-      {/* NAVBAR */}
-      <Navbar
-        cartCount={cart.reduce((sum, item) => sum + item.qty, 0)}
-        onOpenLogin={() => setIsLoginOpen(true)}
-        onOpenCart={() => setIsCartOpen(true)}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        onNavigate={(view) => {
-          setActiveView(view);
-          if (view !== 'orders') setActiveOrderId(null);
-        }}
-      />
+      {/* NAVBAR - Hidden only during admin view */}
+      {activeView !== 'admin' && (
+        <Navbar
+          cartCount={cart.reduce((sum, item) => sum + item.qty, 0)}
+          onOpenLogin={(isSignUp = false) => setLoginModalState({ isOpen: true, isSignUp })}
+          onOpenSignUp={() => setLoginModalState({ isOpen: true, isSignUp: true })}
+          onOpenCart={() => setIsCartOpen(true)}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          activeView={activeView}
+          onNavigate={(view) => {
+            setActiveView(view);
+            if (view !== 'orders') setActiveOrderId(null);
+          }}
+        />
+      )}
 
       <div className="main-body">
+        {activeView === 'admin' && (
+          <AdminPanel
+            onBack={() => setActiveView('home')}
+          />
+        )}
+
+        {activeView === 'about' && (
+          <AboutUs
+            onNavigate={(view) => setActiveView(view)}
+          />
+        )}
+
+        {activeView === 'contact' && (
+          <ContactUs
+            onNavigate={(view) => setActiveView(view)}
+          />
+        )}
+
         {activeView === 'home' && (
           <>
             {/* SIDEBAR */}
@@ -200,12 +222,17 @@ function AppContent() {
             {/* MAIN PRODUCT AREA */}
             <main className="content-area">
               {searchQuery && displayedProducts['Search Results']?.length === 0 ? (
-                <div style={{ textAlign: 'center', marginTop: '50px', color: '#666' }}><h3>No products found</h3></div>
+                <div style={{ textAlign: 'center', marginTop: '50px', color: 'var(--text-secondary, #666)' }}>
+                  <h3>No products found for "{searchQuery}"</h3>
+                  <p>Try searching for something else like tomato, milk, chips or apple</p>
+                </div>
               ) : (
                 Object.entries(displayedProducts).map(([key, items]) => (
                   items && items.length > 0 && (
                     <section key={key} id={key} className="category-section">
-                      <h2 className="cat-title">{key === 'Search Results' ? `Results for "${searchQuery}"` : categories.find(c => c.id === key)?.label || key}</h2>
+                      <h2 className="cat-title">
+                        {key === 'Search Results' ? `Results for "${searchQuery}"` : categories.find(c => c.id === key)?.label || key}
+                      </h2>
                       <div className="product-grid">
                         {items.map((item) => (
                           <ProductCard
@@ -214,6 +241,14 @@ function AppContent() {
                             addToCart={addToCart}
                             isLiked={wishlist.some(w => w.id === item.id)}
                             onToggleLike={() => toggleWishlist(item)}
+                            onProductClick={() => {
+                              if (!isAuthenticated) {
+                                setLoginModalState({ isOpen: true, isSignUp: false });
+                              } else {
+                                setSelectedProduct(item);
+                              }
+                            }}
+                            onOpenLogin={() => setLoginModalState({ isOpen: true, isSignUp: false })}
                           />
                         ))}
                       </div>
@@ -228,7 +263,7 @@ function AppContent() {
         {activeView === 'orders' && (
           <MyOrders
             activeOrderId={activeOrderId}
-            onOpenLogin={() => setIsLoginOpen(true)}
+            onOpenLogin={() => setLoginModalState({ isOpen: true, isSignUp: false })}
           />
         )}
 
@@ -237,6 +272,18 @@ function AppContent() {
             wishlistItems={wishlist}
             addToCart={addToCart}
             onToggleLike={toggleWishlist}
+          />
+        )}
+
+        {activeView === 'profile' && (
+          <UserProfile
+            onBack={() => setActiveView('home')}
+          />
+        )}
+
+        {activeView === 'support' && (
+          <SupportCenter
+            onBack={() => setActiveView('home')}
           />
         )}
       </div>
@@ -256,21 +303,43 @@ function AppContent() {
           onClose={() => setIsPaymentOpen(false)}
           onPaymentSuccess={handlePaymentSuccess}
           cart={cart}
-          onOpenLogin={() => setIsLoginOpen(true)}
+          onOpenLogin={() => setLoginModalState({ isOpen: true, isSignUp: false })}
         />
       )}
 
-      {isLoginOpen && <LoginModal onClose={() => setIsLoginOpen(false)} onLoginSuccess={handleLoginSuccess} />}
+      {loginModalState.isOpen && (
+        <LoginModal
+          initialIsSignUp={loginModalState.isSignUp}
+          onClose={() => setLoginModalState({ isOpen: false, isSignUp: false })}
+          onLoginSuccess={handleLoginSuccess}
+        />
+      )}
 
+      {selectedProduct && (
+        <ProductDetail
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          addToCart={addToCart}
+          onToggleLike={() => toggleWishlist(selectedProduct)}
+          isLiked={wishlist.some(w => w.id === selectedProduct.id)}
+          allProducts={Object.values(products).flat()}
+        />
+      )}
     </div>
   );
 }
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ToastProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AdminProvider>
+            <AppContent />
+          </AdminProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </ToastProvider>
   );
 }
 

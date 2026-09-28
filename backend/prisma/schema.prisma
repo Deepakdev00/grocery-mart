@@ -1,0 +1,191 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String          @id @default(cuid())
+  username      String          @unique
+  email         String          @unique
+  password      String
+  address       Address?
+  profile       UserProfile?
+  carts         Cart[]
+  payments      Payment[]
+  supportTickets SupportTicket[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([email])
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  street    String?
+  city      String?
+  state     String?
+  pincode   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+  updatedAt DateTime   @updatedAt
+
+  @@index([userId])
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  name      String
+  weight    String
+  price     Float
+  img       String?
+  qty       Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@unique([cartId, productId])
+  @@index([cartId])
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items           PaymentItem[]
+  itemTotal       Float
+  deliveryFee     Float    @default(0)
+  handlingFee     Float    @default(2)
+  grandTotal      Float
+  paymentMethod   String   // "upi" | "card" | "cod"
+  status          String   @default("pending") // "pending" | "completed" | "failed"
+  deliveryAddress String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model PaymentItem {
+  id        String  @id @default(cuid())
+  paymentId String
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  productId String
+  name      String
+  weight    String?
+  price     Float
+  qty       Int
+
+  @@index([paymentId])
+}
+
+model Admin {
+  id        String          @id @default(cuid())
+  username  String          @unique
+  email     String          @unique
+  password  String
+  role      String          @default("admin") // "admin" | "super_admin"
+  sessions  AdminSession[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([email])
+}
+
+model AdminSession {
+  id        String   @id @default(cuid())
+  adminId   String
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  loginAt   DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  expiresAt DateTime
+  isActive  Boolean  @default(true)
+
+  @@index([adminId])
+  @@index([token])
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  price       Float
+  category    String   // "vegetables" | "fruits" | "dairy"
+  imageUrl    String
+  description String?
+  inStock     Boolean  @default(true)
+  createdBy   String   // admin id
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+}
+
+model UserProfile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phoneNumber  String?
+  profileImage String?  // URL
+  theme        String   @default("light") // "light" | "dark"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SupportTicket {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  status      String         @default("open") // "open" | "in_progress" | "resolved" | "closed"
+  priority    String         @default("medium") // "low" | "medium" | "high"
+  category    String         // "complaint" | "bug" | "suggestion"
+  replies     SupportReply[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model SupportReply {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId    String   // Could be user or admin/support staff
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+model SupportStaff {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  role      String   @default("support") // "support" | "support_manager"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+}

@@ -1,9 +1,21 @@
 import React from 'react';
+import { useAuth } from '../context/AuthContext';
 
-const ProductCard = ({ item, addToCart, isLiked, onToggleLike }) => {
+const ProductCard = ({ item, addToCart, isLiked, onToggleLike, onProductClick, onOpenLogin }) => {
+  const { isAuthenticated } = useAuth();
+
+  const handleAddClick = (e) => {
+    e.stopPropagation();
+    if (!isAuthenticated) {
+      onOpenLogin && onOpenLogin();
+    } else {
+      addToCart(item);
+    }
+  };
+
   return (
-    <div className="product-card">
-      <div className="img-container" style={{ position: 'relative' }}>
+    <div className="product-card" onClick={() => onProductClick && onProductClick(item)}>
+      <div className="img-container" style={{ position: 'relative', cursor: 'pointer' }}>
         <img
           src={item.img}
           alt={item.name}
@@ -52,7 +64,7 @@ const ProductCard = ({ item, addToCart, isLiked, onToggleLike }) => {
         <div className="prod-weight">{item.weight}</div>
         <div className="prod-footer">
           <div className="prod-price">₹{item.price}</div>
-          <button className="add-btn" onClick={() => addToCart(item)}>ADD</button>
+          <button className="add-btn" onClick={handleAddClick}>ADD</button>
         </div>
       </div>
     </div>

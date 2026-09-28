@@ -1,14 +1,31 @@
 const express = require('express');
-const Payment = require('../models/Payment');
-const Cart = require('../models/Cart');
-const { auth } = require('../middleware/auth');
+const { PrismaClient } = require('@prisma/client');
+const jwt = require('jsonwebtoken');
 
+const prisma = new PrismaClient();
 const router = express.Router();
 
-// @route   POST /api/payment/process
-// @desc    Process payment
-// @access  Private
-router.post('/process', auth, async (req, res) => {
+const JWT_SECRET = process.env.JWT_SECRET || 'grocery_mart_secret_key_2024';
+
+// Middleware to get userId from token
+const authMiddleware = (req, res, next) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  if (!token) {
+    return res.status(401).json({ message: 'No token provided' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.userId = decoded.userId;
+    next();
+  } catch (error) {
+    res.status(401).json({ message: 'Invalid token' });
+  }
+};
+
+// POST /api/payment/process
+// Process payment and create order
+router.post('/process', authMiddleware, async (req, res) => {
   try {
     const { paymentMethod, paymentDetails, deliveryAddress, items } = req.body;
 
@@ -35,9 +52,13 @@ router.post('/process', auth, async (req, res) => {
 
     // Get cart items (either from request or from database)
     let cartItems = items;
-    
+
     if (!cartItems || cartItems.length === 0) {
-      const cart = await Cart.findOne({ user: req.userId });
+      const cart = await prisma.cart.findUnique({
+        where: { userId: req.userId },
+        include: { items: true }
+      });
+
       if (!cart || cart.items.length === 0) {
         return res.status(400).json({ message: 'Cart is empty' });
       }
@@ -50,38 +71,39 @@ router.post('/process', auth, async (req, res) => {
     const handlingFee = 2;
     const grandTotal = itemTotal + deliveryFee + handlingFee;
 
-    // Create payment record
-    const payment = new Payment({
-      user: req.userId,
-      items: cartItems.map(item => ({
-        productId: String(item.productId || item.id),
-        name: item.name,
-        weight: item.weight,
-        price: item.price,
-        qty: item.qty
-      })),
-      itemTotal,
-      deliveryFee,
-      handlingFee,
-      grandTotal,
-      paymentMethod,
-      paymentDetails: paymentMethod === 'cod' ? {} : paymentDetails,
-      status: paymentMethod === 'cod' ? 'pending' : 'completed',
-      deliveryAddress: deliveryAddress || req.user.address
+    // Create payment record with items
+    const payment = await prisma.payment.create({
+      data: {
+        userId: req.userId,
+        itemTotal,
+        deliveryFee,
+        handlingFee,
+        grandTotal,
+        paymentMethod,
+        status: paymentMethod === 'cod' ? 'pending' : 'completed',
+        deliveryAddress: deliveryAddress || '',
+        items: {
+          create: cartItems.map(item => ({
+            productId: String(item.productId || item.id),
+            name: item.name,
+            weight: item.weight || '',
+            price: item.price,
+            qty: item.qty
+          }))
+        }
+      },
+      include: { items: true }
     });
 
-    await payment.save();
-
     // Clear the cart after successful payment
-    await Cart.findOneAndUpdate(
-      { user: req.userId },
-      { $set: { items: [] } }
-    );
+    await prisma.cartItem.deleteMany({
+      where: { cart: { userId: req.userId } }
+    });
 
     res.status(201).json({
       message: 'Payment processed successfully',
       payment: {
-        id: payment._id,
+        id: payment.id,
         grandTotal: payment.grandTotal,
         status: payment.status,
         paymentMethod: payment.paymentMethod,
@@ -94,18 +116,20 @@ router.post('/process', auth, async (req, res) => {
   }
 });
 
-// @route   GET /api/payment/history
-// @desc    Get user's payment/order history
-// @access  Private
-router.get('/history', auth, async (req, res) => {
+// GET /api/payment/history
+// Get user's payment/order history
+router.get('/history', authMiddleware, async (req, res) => {
   try {
-    const payments = await Payment.find({ user: req.userId })
-      .sort({ createdAt: -1 })
-      .limit(20);
+    const payments = await prisma.payment.findMany({
+      where: { userId: req.userId },
+      include: { items: true },
+      orderBy: { createdAt: 'desc' },
+      take: 20
+    });
 
     res.json({
       orders: payments.map(payment => ({
-        id: payment._id,
+        id: payment.id,
         items: payment.items,
         itemTotal: payment.itemTotal,
         deliveryFee: payment.deliveryFee,
@@ -122,14 +146,16 @@ router.get('/history', auth, async (req, res) => {
   }
 });
 
-// @route   GET /api/payment/:id
-// @desc    Get payment/order details
-// @access  Private
-router.get('/:id', auth, async (req, res) => {
+// GET /api/payment/:id
+// Get payment/order details
+router.get('/:id', authMiddleware, async (req, res) => {
   try {
-    const payment = await Payment.findOne({
-      _id: req.params.id,
-      user: req.userId
+    const payment = await prisma.payment.findFirst({
+      where: {
+        id: req.params.id,
+        userId: req.userId
+      },
+      include: { items: true }
     });
 
     if (!payment) {
@@ -138,7 +164,7 @@ router.get('/:id', auth, async (req, res) => {
 
     res.json({
       order: {
-        id: payment._id,
+        id: payment.id,
         items: payment.items,
         itemTotal: payment.itemTotal,
         deliveryFee: payment.deliveryFee,

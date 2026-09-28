@@ -1,0 +1,23 @@
+[
+  {
+    "id": "user_1790607151150",
+    "username": "dev",
+    "email": "dev@test.com",
+    "password": "123456",
+    "createdAt": "2026-09-28T14:52:31.150Z"
+  },
+  {
+    "id": "user_1790607163200",
+    "username": "admin",
+    "email": "admin@test.com",
+    "password": "admin123",
+    "createdAt": "2026-09-28T14:52:43.200Z"
+  },
+  {
+    "id": "user_1790613270765",
+    "username": "deepakdev",
+    "email": "mekadeepakdev@gmail.com",
+    "password": "123456@",
+    "createdAt": "2026-09-28T16:34:30.765Z"
+  }
+]

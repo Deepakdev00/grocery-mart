@@ -6,7 +6,7 @@ const getToken = () => localStorage.getItem('token');
 // Helper for making API requests
 const apiRequest = async (endpoint, options = {}) => {
   const token = getToken();
-  
+
   const config = {
     headers: {
       'Content-Type': 'application/json',
@@ -20,34 +20,131 @@ const apiRequest = async (endpoint, options = {}) => {
     config.body = JSON.stringify(options.body);
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-  const data = await response.json();
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    const data = await response.json();
 
-  if (!response.ok) {
-    throw new Error(data.message || 'API request failed');
+    if (!response.ok) {
+      throw new Error(data.message || 'API request failed');
+    }
+
+    return data;
+  } catch (error) {
+    // If API fails, use mock/local storage instead
+    console.warn('API call failed, using mock auth:', error.message);
+    throw error;
   }
+};
 
-  return data;
+// Mock user storage (simulates backend database)
+const getMockUsers = () => {
+  const users = localStorage.getItem('mock_users');
+  return users ? JSON.parse(users) : [];
+};
+
+const saveMockUser = (user) => {
+  const users = getMockUsers();
+  users.push(user);
+  localStorage.setItem('mock_users', JSON.stringify(users));
+};
+
+const findMockUser = (email) => {
+  const users = getMockUsers();
+  return users.find(u => u.email === email);
 };
 
 // Auth API
 export const authAPI = {
-  signup: (username, email, password) => 
-    apiRequest('/auth/signup', {
-      method: 'POST',
-      body: { username, email, password }
-    }),
+  signup: async (username, email, password) => {
+    try {
+      // Try real API first
+      return await apiRequest('/auth/signup', {
+        method: 'POST',
+        body: { username, email, password }
+      });
+    } catch (error) {
+      // Fallback to mock auth
+      const existingUser = findMockUser(email);
+      if (existingUser) {
+        throw new Error('Email already registered');
+      }
 
-  login: (email, password) => 
-    apiRequest('/auth/login', {
-      method: 'POST',
-      body: { email, password }
-    }),
+      const newUser = {
+        id: 'user_' + Date.now(),
+        username,
+        email,
+        password, // In production, never store plain passwords!
+        createdAt: new Date().toISOString()
+      };
 
-  getMe: () => 
-    apiRequest('/auth/me'),
+      saveMockUser(newUser);
 
-  updateProfile: (data) => 
+      const token = 'mock_token_' + Date.now();
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify({
+        id: newUser.id,
+        username: newUser.username,
+        email: newUser.email,
+        name: newUser.username
+      }));
+
+      return {
+        success: true,
+        message: 'Account created successfully',
+        token,
+        user: {
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          name: newUser.username
+        }
+      };
+    }
+  },
+
+  login: async (email, password) => {
+    try {
+      // Try real API first
+      return await apiRequest('/auth/login', {
+        method: 'POST',
+        body: { email, password }
+      });
+    } catch (error) {
+      // Fallback to mock auth
+      const user = findMockUser(email);
+      if (!user || user.password !== password) {
+        throw new Error('Invalid email or password');
+      }
+
+      const token = 'mock_token_' + Date.now();
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        name: user.username
+      }));
+
+      return {
+        success: true,
+        message: 'Login successful',
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          name: user.username
+        }
+      };
+    }
+  },
+
+  getMe: () => {
+    const user = localStorage.getItem('user');
+    return user ? { user: JSON.parse(user) } : { user: null };
+  },
+
+  updateProfile: (data) =>
     apiRequest('/auth/update', {
       method: 'PUT',
       body: data

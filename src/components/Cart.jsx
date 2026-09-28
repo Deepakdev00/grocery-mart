@@ -1,6 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 const Cart = ({ cart, onClose, updateQty, onOpenPayment }) => {
+  // Auto-close when cart is empty
+  useEffect(() => {
+    if (cart.length === 0) {
+      onClose();
+    }
+  }, [cart.length, onClose]);
   const itemTotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
   const deliveryFee = itemTotal > 100 ? 0 : 25;
   const handlingFee = 2;

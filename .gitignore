@@ -25,3 +25,15 @@ backend/.env
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.log
+backend/backend.log
+
+# Agent & editor configs
+.claude/
+.agents/
+.cursor/
+.devin/
+backend/.claude/
+backend/.agents/
+backend/.cursor/
+backend/.devin/
