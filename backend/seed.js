@@ -4,11 +4,100 @@ const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function seedDatabase() {
-  console.log('🌱 Starting database seeding...\n');
+  console.log('🌱 Starting comprehensive auth database seeding...\n');
 
   try {
-    // Create admin user
-    console.log('📝 Creating admin user...');
+    // 1. Seed Roles (Submodule 3: RBAC)
+    console.log('🛡️ Creating Roles...');
+    const rolesList = [
+      { name: 'admin', description: 'Full system administrator with all permissions' },
+      { name: 'staff', description: 'Store staff managing products, orders and customer support' },
+      { name: 'supplier', description: 'Suppliers providing grocery stock and inventory updates' },
+      { name: 'retailer', description: 'Retail partners purchasing wholesale groceries' },
+      { name: 'customer', description: 'Standard consumer purchasing groceries online' }
+    ];
+
+    const roles = {};
+    for (const r of rolesList) {
+      const role = await prisma.role.upsert({
+        where: { name: r.name },
+        update: { description: r.description },
+        create: {
+          name: r.name,
+          description: r.description
+        }
+      });
+      roles[r.name] = role;
+      console.log(`✅ Role ready: ${role.name}`);
+    }
+
+    // 2. Seed Permissions
+    console.log('\n🔑 Creating Permissions...');
+    const permissionsList = [
+      { name: 'manage_users', description: 'Create, update, deactivate users and roles', module: 'users' },
+      { name: 'view_users', description: 'View user directory and profiles', module: 'users' },
+      { name: 'manage_products', description: 'Add, edit, delete products catalog', module: 'products' },
+      { name: 'view_products', description: 'Browse and search product catalog', module: 'products' },
+      { name: 'manage_orders', description: 'Update order status and handle cancellations', module: 'orders' },
+      { name: 'view_orders', description: 'View order history and details', module: 'orders' },
+      { name: 'create_order', description: 'Place new grocery orders', module: 'orders' },
+      { name: 'view_audit_logs', description: 'View login logs and activity audit trail', module: 'security' },
+      { name: 'manage_inventory', description: 'Update stock levels as supplier', module: 'inventory' },
+      { name: 'support_tickets', description: 'Manage customer support requests', module: 'support' }
+    ];
+
+    const permissions = {};
+    for (const p of permissionsList) {
+      const perm = await prisma.permission.upsert({
+        where: { name: p.name },
+        update: { description: p.description, module: p.module },
+        create: {
+          name: p.name,
+          description: p.description,
+          module: p.module
+        }
+      });
+      permissions[p.name] = perm;
+      console.log(`✅ Permission ready: ${perm.name}`);
+    }
+
+    // 3. Map Permissions to Roles
+    console.log('\n🔗 Mapping Permissions to Roles...');
+    const roleMappings = {
+      admin: Object.keys(permissions),
+      staff: ['view_users', 'manage_products', 'view_products', 'manage_orders', 'view_orders', 'support_tickets'],
+      supplier: ['view_products', 'manage_inventory', 'view_orders'],
+      retailer: ['view_products', 'create_order', 'view_orders'],
+      customer: ['view_products', 'create_order', 'view_orders']
+    };
+
+    for (const [roleName, permNames] of Object.entries(roleMappings)) {
+      const roleObj = roles[roleName];
+      if (roleObj) {
+        for (const pName of permNames) {
+          const permObj = permissions[pName];
+          if (permObj) {
+            await prisma.rolePermissionMap.upsert({
+              where: {
+                roleId_permissionId: {
+                  roleId: roleObj.id,
+                  permissionId: permObj.id
+                }
+              },
+              update: {},
+              create: {
+                roleId: roleObj.id,
+                permissionId: permObj.id
+              }
+            });
+          }
+        }
+      }
+    }
+    console.log('✅ Role-Permission mappings seeded successfully');
+
+    // 4. Create Admin Account
+    console.log('\n📝 Creating Admin User...');
     const adminPassword = await bcrypt.hash('admin123', 10);
     const admin = await prisma.admin.upsert({
       where: { email: 'admin@grocerymart.com' },
@@ -20,99 +109,69 @@ async function seedDatabase() {
         role: 'admin'
       }
     });
-    console.log('✅ Admin created:', admin.email);
+    console.log('✅ Admin account ready: admin@grocerymart.com (pass: admin123)');
 
-    // Create test users
-    console.log('\n📝 Creating test users...');
-    const testUsers = [
-      { username: 'user1', email: 'user1@example.com', password: 'pass123' },
-      { username: 'user2', email: 'user2@example.com', password: 'pass123' },
-      { username: 'user3', email: 'user3@example.com', password: 'pass123' },
-      { username: 'user4', email: 'user4@example.com', password: 'pass123' },
-      { username: 'user5', email: 'user5@example.com', password: 'pass123' }
+    // 5. Create Test Users with Various Roles (Submodules 1, 2, 3, 8)
+    console.log('\n👥 Creating Users across Roles...');
+    const testAccounts = [
+      { username: 'customer_rahul', email: 'rahul@example.com', password: 'pass123', role: 'customer', status: 'active' },
+      { username: 'staff_priya', email: 'staff@grocerymart.com', password: 'pass123', role: 'staff', status: 'active' },
+      { username: 'supplier_freshfarms', email: 'supplier@grocerymart.com', password: 'pass123', role: 'supplier', status: 'active' },
+      { username: 'retailer_supermart', email: 'retailer@grocerymart.com', password: 'pass123', role: 'retailer', status: 'active' },
+      { username: 'suspended_user', email: 'suspended@example.com', password: 'pass123', role: 'customer', status: 'suspended' },
+      { username: 'user1', email: 'user1@example.com', password: 'pass123', role: 'customer', status: 'active' }
     ];
 
     const users = [];
-    for (const testUser of testUsers) {
-      const hashedPassword = await bcrypt.hash(testUser.password, 10);
+    for (const acc of testAccounts) {
+      const hashedPassword = await bcrypt.hash(acc.password, 10);
       const user = await prisma.user.upsert({
-        where: { email: testUser.email },
-        update: {},
+        where: { email: acc.email },
+        update: { role: acc.role, status: acc.status },
         create: {
-          username: testUser.username,
-          email: testUser.email,
-          password: hashedPassword
+          username: acc.username,
+          email: acc.email,
+          password: hashedPassword,
+          role: acc.role,
+          status: acc.status
         }
       });
       users.push(user);
-      console.log(`✅ User created: ${user.username}`);
+      console.log(`✅ User: ${user.username} [Role: ${user.role}, Status: ${user.status}]`);
     }
 
-    // Create test orders with past dates
-    console.log('\n📝 Creating test orders...');
-    const products = [
-      { name: 'Tomatoes', weight: '1kg', price: 40 },
-      { name: 'Onions', weight: '2kg', price: 60 },
-      { name: 'Potatoes', weight: '5kg', price: 80 },
-      { name: 'Carrots', weight: '500g', price: 30 },
-      { name: 'Cabbage', weight: '1kg', price: 25 }
-    ];
-
-    for (let i = 0; i < 15; i++) {
-      const user = users[Math.floor(Math.random() * users.length)];
-      const itemsCount = Math.floor(Math.random() * 3) + 1;
-      const items = [];
-
-      for (let j = 0; j < itemsCount; j++) {
-        const product = products[Math.floor(Math.random() * products.length)];
-        items.push({
-          ...product,
-          qty: Math.floor(Math.random() * 3) + 1,
-          productId: `prod_${i}_${j}`
-        });
-      }
-
-      const itemTotal = items.reduce((sum, item) => sum + (item.price * item.qty), 0);
-      const deliveryFee = itemTotal > 100 ? 0 : 25;
-      const handlingFee = 2;
-      const grandTotal = itemTotal + deliveryFee + handlingFee;
-
-      // Create order with past date
-      const orderDate = new Date();
-      orderDate.setDate(orderDate.getDate() - Math.floor(Math.random() * 30));
-
-      const payment = await prisma.payment.create({
+    // 6. Seed Sample Activity & Login Logs (Submodule 7)
+    console.log('\n📜 Creating Audit Logs...');
+    const sampleUser = users[0];
+    if (sampleUser) {
+      await prisma.loginLog.create({
         data: {
-          userId: user.id,
-          itemTotal,
-          deliveryFee,
-          handlingFee,
-          grandTotal,
-          paymentMethod: ['upi', 'card', 'cod'][Math.floor(Math.random() * 3)],
-          status: ['completed', 'pending', 'processing'][Math.floor(Math.random() * 3)],
-          deliveryAddress: `${user.username}'s Address, Mumbai, MH 400001`,
-          createdAt: orderDate,
-          items: {
-            create: items.map((item, idx) => ({
-              productId: item.productId,
-              name: item.name,
-              weight: item.weight,
-              price: item.price,
-              qty: item.qty
-            }))
-          }
-        },
-        include: { items: true }
+          userId: sampleUser.id,
+          email: sampleUser.email,
+          action: 'login_success',
+          ipAddress: '127.0.0.1',
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+        }
       });
 
-      console.log(`✅ Order created for ${user.username}: ₹${grandTotal}`);
+      await prisma.activityLog.create({
+        data: {
+          userId: sampleUser.id,
+          action: 'user_created',
+          details: 'Account registered with role: customer',
+          ipAddress: '127.0.0.1'
+        }
+      });
     }
 
-    console.log('\n✨ Database seeding completed!');
-    console.log('\n📊 Summary:');
-    console.log(`   Admin Users: 1`);
-    console.log(`   Regular Users: ${users.length}`);
-    console.log(`   Orders: 15`);
+    console.log('\n✨ Database seeding completed successfully!');
+    console.log('\n📋 Demo Test Credentials:');
+    console.log('   👑 Admin:    admin@grocerymart.com   / admin123');
+    console.log('   👨‍💼 Staff:    staff@grocerymart.com   / pass123');
+    console.log('   🚜 Supplier: supplier@grocerymart.com/ pass123');
+    console.log('   🏬 Retailer: retailer@grocerymart.com/ pass123');
+    console.log('   🛒 Customer: rahul@example.com       / pass123');
+    console.log('   🚫 Suspended:suspended@example.com   / pass123');
 
     process.exit(0);
   } catch (error) {

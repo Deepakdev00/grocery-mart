@@ -21,6 +21,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const productRoutes = require('./routes/products');
 const profileRoutes = require('./routes/profile');
 const supportRoutes = require('./routes/support');
+const userManagementRoutes = require('./routes/userManagement');
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -28,6 +29,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/dashboard', dashboardRoutes);
+app.use('/api/admin/user-management', userManagementRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/support', supportRoutes);

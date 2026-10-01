@@ -1,18 +1,7 @@
 {
-  "name": "grocery-mart",
+  "name": "grocery-mart-frontend",
   "version": "1.0.0",
   "private": true,
-  "scripts": {
-    "start": "cd frontend && npm start",
-    "build": "cd frontend && npm run build",
-    "test": "cd frontend && npm test",
-    "eject": "cd frontend && npm run eject",
-    "client": "cd frontend && npm start",
-    "server": "cd backend && npm run dev",
-    "dev": "cd frontend && npm start",
-    "app:client": "cd frontend && npm start",
-    "app:server": "cd backend && npm run dev"
-  },
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
@@ -22,6 +11,12 @@
     "react-dom": "^19.2.4",
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
