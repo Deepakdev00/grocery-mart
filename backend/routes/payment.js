@@ -1,33 +1,15 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
-const jwt = require('jsonwebtoken');
+const { requireUser: authMiddleware } = require('../middleware/jwtAuth');
 
 const prisma = new PrismaClient();
 const router = express.Router();
-
-const JWT_SECRET = process.env.JWT_SECRET || 'grocery_mart_secret_key_2024';
-
-// Middleware to get userId from token
-const authMiddleware = (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
-  if (!token) {
-    return res.status(401).json({ message: 'No token provided' });
-  }
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.userId = decoded.userId;
-    next();
-  } catch (error) {
-    res.status(401).json({ message: 'Invalid token' });
-  }
-};
 
 // POST /api/payment/process
 // Process payment and create order
 router.post('/process', authMiddleware, async (req, res) => {
   try {
-    const { paymentMethod, paymentDetails, deliveryAddress, items } = req.body;
+    const { paymentMethod, paymentDetails, deliveryAddress } = req.body;
 
     // Validation
     if (!paymentMethod) {
@@ -38,32 +20,23 @@ router.post('/process', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'Invalid payment method' });
     }
 
-    // Validate UPI
-    if (paymentMethod === 'upi' && (!paymentDetails?.upiId || !paymentDetails.upiId.includes('@'))) {
-      return res.status(400).json({ message: 'Please enter a valid UPI ID' });
+    if (paymentMethod !== 'cod') {
+      return res.status(501).json({ message: 'Online payments are not configured yet' });
     }
 
-    // Validate Card
-    if (paymentMethod === 'card') {
-      if (!paymentDetails?.cardLastFour) {
-        return res.status(400).json({ message: 'Card details are required' });
-      }
+    if (typeof deliveryAddress !== 'string' || !deliveryAddress.trim() || deliveryAddress.length > 500) {
+      return res.status(400).json({ message: 'A delivery address of at most 500 characters is required' });
     }
 
-    // Get cart items (either from request or from database)
-    let cartItems = items;
+    const cart = await prisma.cart.findUnique({
+      where: { userId: req.userId },
+      include: { items: true }
+    });
 
-    if (!cartItems || cartItems.length === 0) {
-      const cart = await prisma.cart.findUnique({
-        where: { userId: req.userId },
-        include: { items: true }
-      });
-
-      if (!cart || cart.items.length === 0) {
-        return res.status(400).json({ message: 'Cart is empty' });
-      }
-      cartItems = cart.items;
+    if (!cart || cart.items.length === 0) {
+      return res.status(400).json({ message: 'Cart is empty' });
     }
+    const cartItems = cart.items;
 
     // Calculate totals
     const itemTotal = cartItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
@@ -72,32 +45,32 @@ router.post('/process', authMiddleware, async (req, res) => {
     const grandTotal = itemTotal + deliveryFee + handlingFee;
 
     // Create payment record with items
-    const payment = await prisma.payment.create({
-      data: {
-        userId: req.userId,
-        itemTotal,
-        deliveryFee,
-        handlingFee,
-        grandTotal,
-        paymentMethod,
-        status: paymentMethod === 'cod' ? 'pending' : 'completed',
-        deliveryAddress: deliveryAddress || '',
-        items: {
-          create: cartItems.map(item => ({
-            productId: String(item.productId || item.id),
-            name: item.name,
-            weight: item.weight || '',
-            price: item.price,
-            qty: item.qty
-          }))
-        }
-      },
-      include: { items: true }
-    });
+    const payment = await prisma.$transaction(async (transaction) => {
+      const createdPayment = await transaction.payment.create({
+        data: {
+          userId: req.userId,
+          itemTotal,
+          deliveryFee,
+          handlingFee,
+          grandTotal,
+          paymentMethod,
+          status: 'pending',
+          deliveryAddress: deliveryAddress.trim(),
+          items: {
+            create: cartItems.map(item => ({
+              productId: item.productId,
+              name: item.name,
+              weight: item.weight || '',
+              price: item.price,
+              qty: item.qty
+            }))
+          }
+        },
+        include: { items: true }
+      });
 
-    // Clear the cart after successful payment
-    await prisma.cartItem.deleteMany({
-      where: { cart: { userId: req.userId } }
+      await transaction.cartItem.deleteMany({ where: { cartId: cart.id } });
+      return createdPayment;
     });
 
     res.status(201).json({

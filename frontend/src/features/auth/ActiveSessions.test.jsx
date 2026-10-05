@@ -22,7 +22,6 @@ describe('ActiveSessions Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    localStorage.setItem('token', 'current-test-token');
     ToastContextModule.useToast.mockReturnValue({
       success: mockSuccess,
       error: mockError,
@@ -35,7 +34,6 @@ describe('ActiveSessions Component', () => {
       sessions: [
         {
           id: 's1',
-          token: 'current-test-token',
           ipAddress: '192.168.1.100',
           userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0',
           loginAt: new Date().toISOString(),
@@ -44,7 +42,6 @@ describe('ActiveSessions Component', () => {
         },
         {
           id: 's2',
-          token: 'other-mobile-token',
           ipAddress: '10.0.0.5',
           userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1',
           loginAt: new Date().toISOString(),
@@ -74,14 +71,12 @@ describe('ActiveSessions Component', () => {
       sessions: [
         {
           id: 's1',
-          token: 'current-test-token',
           ipAddress: '192.168.1.100',
           userAgent: 'Mozilla/5.0 (Windows NT 10.0) Chrome/120.0',
           isCurrent: true,
         },
         {
           id: 's2',
-          token: 'other-token',
           ipAddress: '10.0.0.5',
           userAgent: 'Mozilla/5.0 (iPhone) Mobile/15E148',
           isCurrent: false,

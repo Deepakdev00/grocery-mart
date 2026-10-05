@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useToast } from '../../context';
+import { useAdmin, useToast } from '../../context';
 import './AdminLogin.css';
 
 const AdminLogin = ({ onClose, onLoginSuccess }) => {
@@ -9,6 +9,7 @@ const AdminLogin = ({ onClose, onLoginSuccess }) => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { addToast } = useToast();
+  const { loginAdmin } = useAdmin();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,34 +17,15 @@ const AdminLogin = ({ onClose, onLoginSuccess }) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const { admin } = await loginAdmin(email, password);
+      addToast({
+        message: `Welcome ${admin.username}! Admin login successful`,
+        type: 'success',
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        localStorage.setItem('adminToken', data.token);
-        localStorage.setItem('adminUser', JSON.stringify(data.admin));
-
-        addToast({
-          message: `Welcome ${data.admin.username}! Admin login successful 🎉`,
-          type: 'success',
-        });
-
-        onLoginSuccess();
-        onClose();
-      } else {
-        setError(data.message || 'Login failed');
-        addToast({
-          message: data.message || 'Admin login failed',
-          type: 'error',
-        });
-      }
+      onLoginSuccess();
+      onClose();
     } catch (err) {
-      const errorMsg = 'Network error. Please try again.';
+      const errorMsg = err.message || 'Admin login failed. Please try again.';
       setError(errorMsg);
       addToast({
         message: errorMsg,
@@ -101,10 +83,6 @@ const AdminLogin = ({ onClose, onLoginSuccess }) => {
           </div>
 
           {error && <div className="error-message">{error}</div>}
-
-          <div className="hint-text">
-            <small>Demo: email: <strong>admin@grocerymart.com</strong>, password: <strong>admin123</strong></small>
-          </div>
 
           <button
             type="submit"

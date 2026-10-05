@@ -3,11 +3,11 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { PrismaClient } = require('@prisma/client');
+const JWT_SECRET = require('../config/auth');
+const { readCookie, setUserCookies, clearUserCookies } = require('../middleware/cookies');
 
 const prisma = new PrismaClient();
 const router = express.Router();
-
-const JWT_SECRET = process.env.JWT_SECRET || 'grocery_mart_secret_key_2024';
 
 // Helper: Extract client IP address
 const getClientIp = (req) => {
@@ -53,22 +53,26 @@ const sanitizeUser = (user) => {
 // Middleware: Verify JWT and extract user info
 const authMiddleware = async (req, res, next) => {
   try {
-    const authHeader = req.header('Authorization');
-    if (!authHeader) {
-      return res.status(401).json({ message: 'No token provided' });
-    }
-
-    const token = authHeader.startsWith('Bearer ')
-      ? authHeader.replace('Bearer ', '').trim()
-      : authHeader.trim();
-
+    const token = readCookie(req, 'gm_access');
     if (!token) {
       return res.status(401).json({ message: 'No token provided' });
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.userId = decoded.userId;
-    req.userRole = decoded.role;
+    const session = await prisma.activeSession.findFirst({
+      where: {
+        token,
+        userId: decoded.userId,
+        isActive: true,
+        expiresAt: { gt: new Date() }
+      },
+      select: { userId: true, user: { select: { role: true, status: true } } }
+    });
+    if (!session || session.user?.status !== 'active') {
+      return res.status(401).json({ message: 'Session is no longer active' });
+    }
+    req.userId = session.userId;
+    req.userRole = session.user.role;
     req.token = token;
 
     next();
@@ -85,7 +89,7 @@ const authMiddleware = async (req, res, next) => {
 // ==========================================
 router.post('/signup', async (req, res) => {
   try {
-    const { username, email, password, role } = req.body;
+    const { username, email, password } = req.body;
 
     // Validate presence of required fields
     if (!username || !email || !password) {
@@ -125,9 +129,7 @@ router.post('/signup', async (req, res) => {
     // Hash password with bcrypt (salt rounds: 10)
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const userRole = role && ['customer', 'staff', 'supplier', 'retailer'].includes(String(role).toLowerCase())
-      ? String(role).toLowerCase()
-      : 'customer';
+    const userRole = 'customer';
 
     // Create user in database
     const user = await prisma.user.create({
@@ -172,10 +174,10 @@ router.post('/signup', async (req, res) => {
       }
     });
 
+    setUserCookies(res, token, refreshToken);
+
     return res.status(201).json({
       message: 'Account created successfully',
-      token,
-      refreshToken,
       user: {
         id: user.id,
         username: user.username,
@@ -240,6 +242,10 @@ router.post('/login', async (req, res) => {
           status: 'active' // Admin accounts are always active
         };
       }
+    }
+
+    if (isAdminAccount) {
+      return res.status(400).json({ message: 'Invalid credentials' });
     }
 
     if (!user) {
@@ -329,10 +335,10 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    setUserCookies(res, token, refreshToken);
+
     return res.json({
       message: 'Login successful',
-      token,
-      refreshToken,
       user: {
         id: user.id,
         username: user.username,
@@ -379,13 +385,11 @@ router.get('/me', authMiddleware, async (req, res) => {
 // ==========================================
 router.post('/logout', async (req, res) => {
   try {
-    const authHeader = req.header('Authorization');
-    const token = authHeader?.startsWith('Bearer ')
-      ? authHeader.replace('Bearer ', '').trim()
-      : authHeader?.trim();
+    const token = readCookie(req, 'gm_access');
 
     if (!token) {
-      return res.status(400).json({ message: 'No token provided' });
+      clearUserCookies(res);
+      return res.json({ message: 'Logged out successfully' });
     }
 
     const ipAddress = getClientIp(req);
@@ -433,9 +437,11 @@ router.post('/logout', async (req, res) => {
       }
     });
 
+    clearUserCookies(res);
     return res.json({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Logout error:', error);
+    clearUserCookies(res);
     return res.status(500).json({ message: 'Server error during logout' });
   }
 });
@@ -484,8 +490,6 @@ router.post('/forgot-password', async (req, res) => {
         }
       });
 
-      // Console log the OTP (since we don't have email service)
-      console.log(`[PASSWORD RESET] OTP for ${user.email}: ${otp} (Token: ${resetToken})`);
     }
 
     // Always return generic success message to prevent user enumeration
@@ -670,7 +674,7 @@ router.post('/reset-password', async (req, res) => {
 // ==========================================
 router.post('/refresh-token', async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    const refreshToken = readCookie(req, 'gm_refresh');
 
     if (!refreshToken) {
       return res.status(400).json({ message: 'Refresh token is required' });
@@ -704,10 +708,10 @@ router.post('/refresh-token', async (req, res) => {
       }
     });
 
+    setUserCookies(res, newToken, session.refreshToken);
+
     return res.json({
-      message: 'Token refreshed successfully',
-      token: newToken,
-      refreshToken: session.refreshToken
+      message: 'Token refreshed successfully'
     });
   } catch (error) {
     console.error('Refresh token error:', error);

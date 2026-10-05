@@ -20,6 +20,7 @@ model User {
   address             Address?
   profile             UserProfile?
   carts               Cart[]
+  wishlistItems       WishlistItem[]
   payments            Payment[]
   supportTickets      SupportTicket[]
   loginLogs           LoginLog[]
@@ -133,18 +134,31 @@ model AdminSession {
 }
 
 model Product {
-  id          String   @id @default(cuid())
-  name        String
-  price       Float
-  category    String // "vegetables" | "fruits" | "dairy"
-  imageUrl    String
-  description String?
-  inStock     Boolean  @default(true)
-  createdBy   String // admin id
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String         @id @default(cuid())
+  name          String
+  weight        String         @default("")
+  price         Float
+  category      String // "vegetables" | "fruits" | "dairy"
+  imageUrl      String
+  description   String?
+  inStock       Boolean        @default(true)
+  createdBy     String // admin id
+  wishlistItems WishlistItem[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@index([category])
+}
+
+model WishlistItem {
+  userId    String
+  productId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, productId])
+  @@index([userId, createdAt])
 }
 
 model UserProfile {

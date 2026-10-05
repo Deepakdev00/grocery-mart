@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './assets/styles/App.css';
-import { products, categories } from './constants';
+import { categories } from './constants';
 
 import { Navbar, Sidebar } from './components/layout';
 import { SessionWarning } from './components/feedback';
@@ -8,13 +8,53 @@ import { ProductCard, ProductDetail, Wishlist } from './features/products';
 import { Cart, PaymentModal } from './features/cart';
 import { LoginModal } from './features/auth';
 import { MyOrders } from './features/orders';
-import { AdminPanel } from './features/admin';
+import { AdminLogin, AdminPanel } from './features/admin';
 import { UserProfile, SupportCenter, AboutUs, ContactUs } from './pages';
-import { AuthProvider, useAuth, AdminProvider, ThemeProvider, ToastProvider } from './context';
-import { cartAPI } from './services';
+import {
+  AuthProvider,
+  useAuth,
+  AdminProvider,
+  useAdmin,
+  ThemeProvider,
+  useTheme,
+  ToastProvider,
+  useToast
+} from './context';
+import { cartAPI, productsAPI, wishlistAPI } from './services';
+
+const mapCartItem = (item) => ({
+  id: item.productId || item.id,
+  name: item.name,
+  weight: item.weight || '',
+  price: Number(item.price),
+  img: item.img || item.imageUrl || '',
+  qty: item.qty || 1
+});
+
+const mapProduct = (product) => {
+  const categoryAliases = {
+    vegetables: 'veg',
+    fruits: 'veg',
+    bakery: 'dairy',
+    beverages: 'drinks'
+  };
+  const category = categories.some(({ id }) => id === product.category)
+    ? product.category
+    : categoryAliases[product.category?.toLowerCase()] || product.category;
+  return {
+    ...product,
+    id: String(product.id),
+    category,
+    weight: product.weight || '',
+    img: product.imageUrl || ''
+  };
+};
 
 function AppContent() {
   const [cart, setCart] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productsError, setProductsError] = useState('');
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [loginModalState, setLoginModalState] = useState({ isOpen: false, isSignUp: false });
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
@@ -27,124 +67,125 @@ function AppContent() {
   const [activeView, setActiveView] = useState('about');
   const [activeOrderId, setActiveOrderId] = useState(null);
 
-  // Wishlist State (Local Storage)
-  const [wishlist, setWishlist] = useState(() => {
-    try {
-      const saved = localStorage.getItem('wishlist');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [wishlist, setWishlist] = useState([]);
+  const { isAuthenticated, user } = useAuth();
+  const { isAdminAuthenticated, loading: adminLoading, logoutAdmin } = useAdmin();
+  const { setTheme } = useTheme();
+  const { error: showError } = useToast();
 
-  const { isAuthenticated, syncCartToServer } = useAuth();
-
-  // Route protection: If unauthenticated and on a protected view, redirect to "about"
   useEffect(() => {
-    if (!isAuthenticated && activeView !== 'about' && activeView !== 'contact') {
+    if (!adminLoading && isAdminAuthenticated) {
+      setActiveView('admin');
+    }
+  }, [adminLoading, isAdminAuthenticated]);
+
+  useEffect(() => {
+    if (
+      !isAuthenticated &&
+      !isAdminAuthenticated &&
+      activeView !== 'about' &&
+      activeView !== 'contact' &&
+      activeView !== 'admin'
+    ) {
       setActiveView('about');
     }
-  }, [isAuthenticated, activeView]);
+  }, [isAuthenticated, isAdminAuthenticated, activeView]);
 
-  // Save wishlist on change
   useEffect(() => {
-    localStorage.setItem('wishlist', JSON.stringify(wishlist));
-  }, [wishlist]);
+    if (!isAuthenticated || user?.role !== 'customer') {
+      setCart([]);
+      setWishlist([]);
+      setProducts([]);
+      setProductsLoading(false);
+      setIsCartOpen(false);
+      return;
+    }
 
-  const toggleWishlist = useCallback((item) => {
-    if (!isAuthenticated) {
+    let isCurrent = true;
+    setProductsLoading(true);
+    setProductsError('');
+    Promise.all([productsAPI.getProducts(), cartAPI.getCart(), wishlistAPI.getWishlist()])
+      .then(([productData, cartData, wishlistData]) => {
+        if (!isCurrent) return;
+        setProducts((productData.products || []).map(mapProduct));
+        setCart((cartData.cart?.items || []).map(mapCartItem));
+        setWishlist((wishlistData.items || []).map(mapProduct));
+      })
+      .catch((error) => {
+        if (!isCurrent) return;
+        setProductsError(error.message || 'Could not load store data. Please try again.');
+      })
+      .finally(() => {
+        if (isCurrent) setProductsLoading(false);
+      });
+    return () => { isCurrent = false; };
+  }, [isAuthenticated, user?.role]);
+
+  useEffect(() => {
+    if (isAuthenticated && user?.profile?.theme) {
+      setTheme(user.profile.theme);
+    }
+  }, [isAuthenticated, setTheme, user?.profile?.theme]);
+
+  const toggleWishlist = useCallback(async (item) => {
+    if (!isAuthenticated || user?.role !== 'customer') {
       setLoginModalState({ isOpen: true, isSignUp: false });
       return;
     }
-    setWishlist((prev) => {
-      const isLiked = prev.some((w) => w.id === item.id);
-      if (isLiked) {
-        return prev.filter((w) => w.id !== item.id);
-      } else {
-        return [...prev, item];
-      }
-    });
-  }, [isAuthenticated]);
 
-  useEffect(() => {
-    const loadCart = async () => {
-      if (isAuthenticated) {
-        try {
-          const data = await cartAPI.getCart();
-          if (data.cart && data.cart.items) {
-            setCart(data.cart.items.map((item) => ({
-              id: item.productId,
-              name: item.name,
-              weight: item.weight,
-              price: item.price,
-              img: item.img,
-              qty: item.qty,
-            })));
-          }
-        } catch (error) {
-          console.error('Failed to load cart:', error);
-        }
+    const isLiked = wishlist.some((saved) => saved.id === item.id);
+    try {
+      if (isLiked) {
+        await wishlistAPI.remove(item.id);
+        setWishlist((previous) => previous.filter((saved) => saved.id !== item.id));
+      } else {
+        const { product } = await wishlistAPI.add(item.id);
+        setWishlist((previous) => previous.some((saved) => saved.id === item.id)
+          ? previous
+          : [...previous, mapProduct(product)]);
       }
-    };
-    loadCart();
-  }, [isAuthenticated]);
+    } catch (error) {
+      showError(error.message || 'Could not update your wishlist.');
+    }
+  }, [isAuthenticated, user?.role, wishlist, showError]);
+
+  const loadCartFromResponse = useCallback((data) => {
+    setCart((data.cart?.items || []).map(mapCartItem));
+  }, []);
 
   const addToCart = useCallback(async (product) => {
-    setCart((prev) => {
-      const exist = prev.find((item) => item.id === product.id);
-      if (exist) return prev.map((item) => item.id === product.id ? { ...item, qty: item.qty + 1 } : item);
-      return [...prev, { ...product, qty: 1 }];
-    });
-    setIsCartOpen(true);
-
-    if (isAuthenticated) {
-      try {
-        await cartAPI.addToCart(product);
-      } catch (error) {
-        console.error('Failed to sync cart:', error);
-      }
+    if (!isAuthenticated || user?.role !== 'customer') {
+      setLoginModalState({ isOpen: true, isSignUp: false });
+      return;
     }
-  }, [isAuthenticated]);
+
+    try {
+      const data = await cartAPI.addToCart({ id: product.id, qty: 1 });
+      loadCartFromResponse(data);
+      setIsCartOpen(true);
+    } catch (error) {
+      showError(error.message || 'Could not add this product to your cart.');
+    }
+  }, [isAuthenticated, user?.role, showError, loadCartFromResponse]);
 
   const updateQty = useCallback(async (id, delta) => {
-    let newQty = 0;
-    setCart((prev) => prev.map((item) => {
-      if (item.id === id) {
-        newQty = item.qty + delta;
-        return { ...item, qty: newQty };
-      }
-      return item;
-    }).filter((item) => item.qty > 0));
+    const currentItem = cart.find((item) => item.id === id);
+    if (!currentItem) return;
 
-    if (isAuthenticated) {
-      try {
-        const currentItem = cart.find((item) => item.id === id);
-        if (currentItem) {
-          const updatedQty = currentItem.qty + delta;
-          await cartAPI.updateCart(id, updatedQty);
-        }
-      } catch (error) {
-        console.error('Failed to update cart:', error);
-      }
+    try {
+      const data = await cartAPI.updateCart(id, currentItem.qty + delta);
+      loadCartFromResponse(data);
+    } catch (error) {
+      showError(error.message || 'Could not update your cart.');
     }
-  }, [isAuthenticated, cart]);
+  }, [cart, showError, loadCartFromResponse]);
 
   const handlePaymentSuccess = useCallback(async (paymentData) => {
     setCart([]);
     setIsPaymentOpen(false);
 
-    if (isAuthenticated) {
-      try {
-        await cartAPI.clearCart();
-      } catch (error) {
-        console.error('Failed to clear cart:', error);
-      }
-
-      if (paymentData && paymentData.id) {
-        setActiveOrderId(paymentData.id);
-      } else {
-        setActiveOrderId(null);
-      }
+    if (isAuthenticated && paymentData?.id) {
+      setActiveOrderId(paymentData.id);
       setActiveView('orders');
     } else {
       setActiveView('home');
@@ -154,25 +195,28 @@ function AppContent() {
   const handleLoginSuccess = useCallback(() => {
     setActiveView('home');
     setLoginModalState({ isOpen: false, isSignUp: false });
-    if (cart.length > 0) {
-      syncCartToServer(cart);
-    }
-  }, [cart, syncCartToServer]);
+  }, []);
 
   const scrollToSection = (id) => {
     setActiveCategory(id);
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const allProducts = Object.values(products).flat();
-
   const displayedProducts = searchQuery
-    ? { 'Search Results': allProducts.filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase())) }
-    : products;
+    ? {
+      'Search Results': products.filter((product) =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    }
+    : products.reduce((grouped, product) => {
+      const category = product.category || 'Other';
+      grouped[category] = [...(grouped[category] || []), product];
+      return grouped;
+    }, {});
+
+  const allProducts = products;
 
   return (
     <div className="app-container">
-      {/* NAVBAR - Hidden only during admin view */}
       {activeView !== 'admin' && (
         <Navbar
           cartCount={cart.reduce((sum, item) => sum + item.qty, 0)}
@@ -183,7 +227,13 @@ function AppContent() {
           setSearchQuery={setSearchQuery}
           activeView={activeView}
           onNavigate={(view) => {
-            if (!isAuthenticated && view !== 'about' && view !== 'contact') {
+            const customerOnlyViews = ['home', 'orders', 'wishlist'];
+            if (
+              view !== 'admin' &&
+              view !== 'about' &&
+              view !== 'contact' &&
+              (!isAuthenticated || (customerOnlyViews.includes(view) && user?.role !== 'customer'))
+            ) {
               setLoginModalState({ isOpen: true, isSignUp: false });
               return;
             }
@@ -195,9 +245,24 @@ function AppContent() {
 
       <div className="main-body">
         {activeView === 'admin' && (
-          <AdminPanel
-            onBack={() => setActiveView('home')}
-          />
+          adminLoading ? (
+            <div role="status" className="content-area">Checking administrator session...</div>
+          ) : isAdminAuthenticated ? (
+            <AdminPanel
+              onBack={async () => {
+                try {
+                  await logoutAdmin();
+                } finally {
+                  setActiveView(isAuthenticated ? 'home' : 'about');
+                }
+              }}
+            />
+          ) : (
+            <AdminLogin
+              onClose={() => setActiveView('about')}
+              onLoginSuccess={() => setActiveView('admin')}
+            />
+          )
         )}
 
         {activeView === 'about' && (
@@ -214,28 +279,35 @@ function AppContent() {
           />
         )}
 
-        {activeView === 'home' && (
+        {activeView === 'home' && isAuthenticated && user?.role === 'customer' && (
           <>
-            {/* SIDEBAR */}
             <Sidebar
               categories={categories}
               activeCategory={activeCategory}
               onSelectCategory={(id) => { setSearchQuery(''); scrollToSection(id); }}
             />
-
-            {/* MAIN PRODUCT AREA */}
             <main className="content-area">
-              {searchQuery && displayedProducts['Search Results']?.length === 0 ? (
+              {productsError && <p role="alert">{productsError}</p>}
+              {productsLoading ? (
+                <p role="status">Loading products...</p>
+              ) : !productsError && products.length === 0 ? (
+                <div role="status" style={{ textAlign: 'center', marginTop: '50px' }}>
+                  <h3>No products are available right now.</h3>
+                  <p>Please check back later.</p>
+                </div>
+              ) : searchQuery && displayedProducts['Search Results']?.length === 0 ? (
                 <div style={{ textAlign: 'center', marginTop: '50px', color: 'var(--text-secondary, #666)' }}>
                   <h3>No products found for "{searchQuery}"</h3>
-                  <p>Try searching for something else like tomato, milk, chips or apple</p>
+                  <p>Try searching for something else.</p>
                 </div>
               ) : (
                 Object.entries(displayedProducts).map(([key, items]) => (
                   items && items.length > 0 && (
                     <section key={key} id={key} className="category-section">
                       <h2 className="cat-title">
-                        {key === 'Search Results' ? `Results for "${searchQuery}"` : categories.find((c) => c.id === key)?.label || key}
+                        {key === 'Search Results'
+                          ? `Results for "${searchQuery}"`
+                          : categories.find((category) => category.id === key)?.label || key}
                       </h2>
                       <div className="product-grid">
                         {items.map((item) => (
@@ -243,15 +315,9 @@ function AppContent() {
                             key={item.id}
                             item={item}
                             addToCart={addToCart}
-                            isLiked={wishlist.some((w) => w.id === item.id)}
+                            isLiked={wishlist.some((saved) => saved.id === item.id)}
                             onToggleLike={() => toggleWishlist(item)}
-                            onProductClick={() => {
-                              if (!isAuthenticated) {
-                                setLoginModalState({ isOpen: true, isSignUp: false });
-                              } else {
-                                setSelectedProduct(item);
-                              }
-                            }}
+                            onProductClick={() => setSelectedProduct(item)}
                             onOpenLogin={() => setLoginModalState({ isOpen: true, isSignUp: false })}
                           />
                         ))}
@@ -264,14 +330,14 @@ function AppContent() {
           </>
         )}
 
-        {activeView === 'orders' && (
+        {activeView === 'orders' && isAuthenticated && user?.role === 'customer' && (
           <MyOrders
             activeOrderId={activeOrderId}
             onOpenLogin={() => setLoginModalState({ isOpen: true, isSignUp: false })}
           />
         )}
 
-        {activeView === 'wishlist' && (
+        {activeView === 'wishlist' && isAuthenticated && user?.role === 'customer' && (
           <Wishlist
             wishlistItems={wishlist}
             addToCart={addToCart}
@@ -280,20 +346,15 @@ function AppContent() {
         )}
 
         {activeView === 'profile' && (
-          <UserProfile
-            onBack={() => setActiveView('home')}
-          />
+          <UserProfile onBack={() => setActiveView('home')} />
         )}
 
         {activeView === 'support' && (
-          <SupportCenter
-            onBack={() => setActiveView('home')}
-          />
+          <SupportCenter onBack={() => setActiveView('home')} />
         )}
       </div>
 
-      {/* MODALS & OVERLAYS */}
-      {isCartOpen && (
+      {isAuthenticated && user?.role === 'customer' && isCartOpen && (
         <Cart
           cart={cart}
           onClose={() => setIsCartOpen(false)}
@@ -302,7 +363,7 @@ function AppContent() {
         />
       )}
 
-      {isPaymentOpen && (
+      {isAuthenticated && user?.role === 'customer' && isPaymentOpen && (
         <PaymentModal
           onClose={() => setIsPaymentOpen(false)}
           onPaymentSuccess={handlePaymentSuccess}
@@ -325,13 +386,12 @@ function AppContent() {
           onClose={() => setSelectedProduct(null)}
           addToCart={addToCart}
           onToggleLike={() => toggleWishlist(selectedProduct)}
-          isLiked={wishlist.some((w) => w.id === selectedProduct.id)}
-          allProducts={Object.values(products).flat()}
+          isLiked={wishlist.some((saved) => saved.id === selectedProduct.id)}
+          allProducts={allProducts}
         />
       )}
 
-      {/* SESSION TIMEOUT WARNING MODAL */}
-      <SessionWarning />
+      {isAuthenticated && <SessionWarning />}
     </div>
   );
 }

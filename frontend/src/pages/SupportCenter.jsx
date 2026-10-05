@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from '../context';
+import { supportAPI } from '../services/api';
 import './SupportCenter.css';
 
 const SupportCenter = ({ onBack }) => {
@@ -19,25 +20,16 @@ const SupportCenter = ({ onBack }) => {
   // Reply Form
   const [replyMessage, setReplyMessage] = useState('');
 
-  const token = localStorage.getItem('token');
-  const API_BASE = 'http://localhost:5000/api';
-
   const fetchTickets = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/support/tickets`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setTickets(data.tickets);
-      }
+      const data = await supportAPI.getTickets();
+      setTickets(data.tickets);
     } catch (error) {
       console.error('Fetch tickets error:', error);
     }
     setLoading(false);
-  }, [API_BASE, token]);
+  }, []);
 
   useEffect(() => {
     fetchTickets();
@@ -55,37 +47,14 @@ const SupportCenter = ({ onBack }) => {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/support/tickets`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ title, description, category, priority }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        addToast({
-          message: 'Support ticket created successfully 🎉',
-          type: 'success',
-        });
-        setTitle('');
-        setDescription('');
-        setActiveTab('tickets');
-        fetchTickets();
-      } else {
-        addToast({
-          message: data.message || 'Failed to create ticket',
-          type: 'error',
-        });
-      }
+      await supportAPI.createTicket({ title, description, category, priority });
+      addToast({ message: 'Support ticket created successfully', type: 'success' });
+      setTitle('');
+      setDescription('');
+      setActiveTab('tickets');
+      await fetchTickets();
     } catch (error) {
-      addToast({
-        message: 'Network error creating ticket',
-        type: 'error',
-      });
+      addToast({ message: error.message || 'Failed to create ticket', type: 'error' });
     }
     setLoading(false);
   };
@@ -95,39 +64,13 @@ const SupportCenter = ({ onBack }) => {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/support/tickets/${ticketId}/reply`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ message: replyMessage }),
-      });
-
-      if (response.ok) {
-        addToast({
-          message: 'Reply sent successfully ✅',
-          type: 'success',
-        });
-        setReplyMessage('');
-        // Refresh ticket
-        const ticketRes = await fetch(`${API_BASE}/support/tickets/${ticketId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const ticketData = await ticketRes.json();
-        setSelectedTicket(ticketData.ticket);
-      } else {
-        const errData = await response.json();
-        addToast({
-          message: errData.message || 'Failed to send reply',
-          type: 'error',
-        });
-      }
+      await supportAPI.reply(ticketId, replyMessage);
+      addToast({ message: 'Reply sent successfully', type: 'success' });
+      setReplyMessage('');
+      const ticketData = await supportAPI.getTicket(ticketId);
+      setSelectedTicket(ticketData.ticket);
     } catch (error) {
-      addToast({
-        message: 'Network error adding reply',
-        type: 'error',
-      });
+      addToast({ message: error.message || 'Failed to add reply', type: 'error' });
     }
     setLoading(false);
   };

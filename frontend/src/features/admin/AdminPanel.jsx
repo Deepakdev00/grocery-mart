@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import AdminNavbar from './AdminNavbar';
 import AdminSidebar from './AdminSidebar';
 import AdminUserManagement from './AdminUserManagement';
+import { useToast } from '../../context';
+import { adminApiRequest } from '../../services/api';
 import './AdminPanel.css';
 
 const AdminPanel = ({ onBack }) => {
@@ -37,9 +39,7 @@ const AdminPanel = ({ onBack }) => {
   // Support Reply
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [adminReply, setAdminReply] = useState('');
-
-  const token = localStorage.getItem('adminToken');
-  const API_BASE = 'http://localhost:5000/api';
+  const { addToast } = useToast();
 
   useEffect(() => {
     fetchDashboardData();
@@ -74,20 +74,12 @@ const AdminPanel = ({ onBack }) => {
   };
 
   const fetchStats = async () => {
-    const response = await fetch(`${API_BASE}/admin/dashboard/stats`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) throw new Error('Failed to fetch stats');
-    const data = await response.json();
+    const data = await adminApiRequest('/admin/dashboard/stats');
     setStats(data.stats);
   };
 
   const fetchDailyOrders = async () => {
-    const response = await fetch(`${API_BASE}/admin/dashboard/daily-orders`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) throw new Error('Failed to fetch daily orders');
-    const data = await response.json();
+    const data = await adminApiRequest('/admin/dashboard/daily-orders');
 
     const formattedData = data.dailyOrders.map((day) => ({
       date: day.date,
@@ -105,84 +97,51 @@ const AdminPanel = ({ onBack }) => {
   };
 
   const fetchOrders = async () => {
-    const response = await fetch(`${API_BASE}/admin/dashboard/orders`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) throw new Error('Failed to fetch orders');
-    const data = await response.json();
+    const data = await adminApiRequest('/admin/dashboard/orders');
     setOrders(data.orders);
   };
 
   const fetchUsers = async () => {
-    const response = await fetch(`${API_BASE}/admin/dashboard/users`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) throw new Error('Failed to fetch users');
-    const data = await response.json();
+    const data = await adminApiRequest('/admin/dashboard/users');
     setUsers(data.users);
   };
 
   const fetchSessions = async () => {
-    const response = await fetch(`${API_BASE}/admin/dashboard/sessions`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) throw new Error('Failed to fetch sessions');
-    const data = await response.json();
+    const data = await adminApiRequest('/admin/dashboard/sessions');
     setSessions(data.sessions);
   };
 
   const fetchProducts = async () => {
-    const response = await fetch(`${API_BASE}/products/admin/all`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) throw new Error('Failed to fetch products');
-    const data = await response.json();
+    const data = await adminApiRequest('/products/admin/all');
     setProducts(data.products);
   };
 
   const fetchTickets = async () => {
-    const response = await fetch(`${API_BASE}/support/dashboard`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) throw new Error('Failed to fetch support tickets');
-    const data = await response.json();
+    const data = await adminApiRequest('/support/dashboard');
     setTickets(data.tickets);
   };
 
   const addProduct = async (e) => {
     e.preventDefault();
     if (!productForm.name || !productForm.price || !productForm.imageUrl) {
-      alert('Please fill in all required fields');
+      addToast({ message: 'Please fill in all required fields', type: 'error' });
       return;
     }
 
     try {
-      const response = await fetch(`${API_BASE}/products`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(productForm),
+      await adminApiRequest('/products', { method: 'POST', body: productForm });
+      addToast({ message: 'Product added successfully', type: 'success' });
+      setProductForm({
+        name: '',
+        price: '',
+        category: 'vegetables',
+        imageUrl: '',
+        description: '',
       });
-
-      if (response.ok) {
-        alert('Product added successfully 🎉');
-        setProductForm({
-          name: '',
-          price: '',
-          category: 'vegetables',
-          imageUrl: '',
-          description: '',
-        });
-        setShowAddProduct(false);
-        fetchProducts();
-      } else {
-        const data = await response.json();
-        alert(data.message || 'Failed to add product');
-      }
+      setShowAddProduct(false);
+      await fetchProducts();
     } catch (error) {
-      alert('Network error adding product');
+      addToast({ message: error.message || 'Failed to add product', type: 'error' });
     }
   };
 
@@ -190,39 +149,26 @@ const AdminPanel = ({ onBack }) => {
     if (!window.confirm('Are you sure you want to delete this product?')) return;
 
     try {
-      const response = await fetch(`${API_BASE}/products/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        alert('Product deleted successfully');
-        fetchProducts();
-      }
+      await adminApiRequest(`/products/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      addToast({ message: 'Product deleted successfully', type: 'success' });
+      await fetchProducts();
     } catch (error) {
-      alert('Network error deleting product');
+      addToast({ message: error.message || 'Failed to delete product', type: 'error' });
     }
   };
 
   const updateTicketStatus = async (ticketId, status) => {
     try {
-      const response = await fetch(`${API_BASE}/support/tickets/${ticketId}/status`, {
+      await adminApiRequest(`/support/tickets/${encodeURIComponent(ticketId)}/status`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status }),
+        body: { status }
       });
-
-      if (response.ok) {
-        fetchTickets();
-        if (selectedTicket) {
-          setSelectedTicket({ ...selectedTicket, status });
-        }
+      await fetchTickets();
+      if (selectedTicket) {
+        setSelectedTicket({ ...selectedTicket, status });
       }
     } catch (error) {
-      alert('Network error updating ticket');
+      addToast({ message: error.message || 'Failed to update ticket', type: 'error' });
     }
   };
 
@@ -230,22 +176,16 @@ const AdminPanel = ({ onBack }) => {
     if (!adminReply.trim()) return;
 
     try {
-      const response = await fetch(`${API_BASE}/support/tickets/${ticketId}/admin-reply`, {
+      await adminApiRequest(`/support/tickets/${encodeURIComponent(ticketId)}/admin-reply`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ message: adminReply }),
+        body: { message: adminReply }
       });
 
-      if (response.ok) {
-        setAdminReply('');
-        fetchTickets();
-        alert('Reply sent successfully ✅');
-      }
+      setAdminReply('');
+      await fetchTickets();
+      addToast({ message: 'Reply sent successfully', type: 'success' });
     } catch (error) {
-      alert('Network error sending reply');
+      addToast({ message: error.message || 'Failed to send reply', type: 'error' });
     }
   };
 

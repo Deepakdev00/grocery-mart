@@ -1,8 +1,9 @@
 const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
+const JWT_SECRET = require('../config/auth');
+const { readCookie } = require('./cookies');
 
 const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'grocery_mart_secret_key_2024';
 
 /**
  * 1. Standard JWT Auth Middleware
@@ -16,17 +17,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'grocery_mart_secret_key_2024';
  */
 const auth = async (req, res, next) => {
   try {
-    const authHeader = req.header('Authorization') || req.headers['authorization'];
-
-    if (!authHeader) {
+    const token = readCookie(req, 'gm_access');
+    if (!token) {
       return res.status(401).json({ message: 'No token provided, authorization denied' });
     }
-
-    if (!authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Invalid token format' });
-    }
-
-    const token = authHeader.replace('Bearer ', '').trim();
 
     const decoded = jwt.verify(token, JWT_SECRET);
 
@@ -92,13 +86,7 @@ const auth = async (req, res, next) => {
  */
 const optionalAuth = async (req, res, next) => {
   try {
-    const authHeader = req.header('Authorization') || req.headers['authorization'];
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return next();
-    }
-
-    const token = authHeader.replace('Bearer ', '').trim();
+    const token = readCookie(req, 'gm_access');
     if (!token) {
       return next();
     }
@@ -151,17 +139,10 @@ const optionalAuth = async (req, res, next) => {
  */
 const adminAuth = async (req, res, next) => {
   try {
-    const authHeader = req.header('Authorization') || req.headers['authorization'];
-
-    if (!authHeader) {
+    const token = readCookie(req, 'gm_admin');
+    if (!token) {
       return res.status(401).json({ message: 'No token provided, admin authorization denied' });
     }
-
-    if (!authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Invalid token format' });
-    }
-
-    const token = authHeader.replace('Bearer ', '').trim();
 
     const decoded = jwt.verify(token, JWT_SECRET);
 
@@ -318,11 +299,7 @@ const requirePermission = (...permissions) => {
  */
 const sessionCheck = async (req, res, next) => {
   try {
-    const token =
-      req.token ||
-      (req.header('Authorization')
-        ? req.header('Authorization').replace('Bearer ', '').trim()
-        : null);
+    const token = req.token || readCookie(req, 'gm_access');
 
     const userId = req.userId || req.user?.id;
 

@@ -1,44 +1,11 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
+const { requireUser: authMiddleware } = require('../middleware/jwtAuth');
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Middleware to get userId from token
-const authMiddleware = (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
-  if (!token) {
-    return res.status(401).json({ message: 'No token provided' });
-  }
-
-  const jwt = require('jsonwebtoken');
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'grocery_mart_secret_key_2024');
-    req.userId = decoded.userId;
-    next();
-  } catch (error) {
-    res.status(401).json({ message: 'Invalid token' });
-  }
-};
-
-// Helper to find or create cart for user or admin account safely
 async function getOrCreateCart(userId) {
-  let userExists = await prisma.user.findUnique({ where: { id: userId } });
-  if (!userExists) {
-    const adminExists = await prisma.admin.findUnique({ where: { id: userId } });
-    if (adminExists) {
-      userExists = await prisma.user.upsert({
-        where: { email: adminExists.email },
-        update: { id: adminExists.id },
-        create: {
-          id: adminExists.id,
-          username: adminExists.username,
-          email: adminExists.email,
-          password: adminExists.password,
-          role: 'admin'
-        }
-      });
-    }
-  }
+  const userExists = await prisma.user.findUnique({ where: { id: userId } });
 
   let cart = await prisma.cart.findUnique({
     where: { userId },
@@ -83,10 +50,24 @@ router.get('/', authMiddleware, async (req, res) => {
 // POST /api/cart/add
 router.post('/add', authMiddleware, async (req, res) => {
   try {
-    const { productId, name, weight, price, img, qty = 1 } = req.body;
+    const { productId, qty = 1 } = req.body;
+    const normalizedProductId = typeof productId === 'string' ? productId.trim() : '';
+    const requestedQty = Number(qty);
 
-    if (!productId || !name || price === undefined) {
-      return res.status(400).json({ message: 'Please provide product details' });
+    if (
+      !normalizedProductId ||
+      !Number.isSafeInteger(requestedQty) ||
+      requestedQty < 1 ||
+      requestedQty > 99
+    ) {
+      return res.status(400).json({ message: 'Please provide a valid productId and quantity' });
+    }
+
+    const product = await prisma.product.findFirst({
+      where: { id: normalizedProductId, inStock: true }
+    });
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found or unavailable' });
     }
 
     const cart = await getOrCreateCart(req.userId);
@@ -95,25 +76,27 @@ router.post('/add', authMiddleware, async (req, res) => {
     }
 
     // Check if item exists
-    const existingItem = cart.items.find(item => item.productId === String(productId));
+    const existingItem = cart.items.find(item => item.productId === product.id);
 
     if (existingItem) {
-      // Update quantity
+      const updatedQty = existingItem.qty + requestedQty;
+      if (updatedQty > 99) {
+        return res.status(400).json({ message: 'Cart quantity cannot exceed 99' });
+      }
       await prisma.cartItem.update({
         where: { id: existingItem.id },
-        data: { qty: existingItem.qty + qty }
+        data: { qty: updatedQty }
       });
     } else {
-      // Add new item
       await prisma.cartItem.create({
         data: {
           cartId: cart.id,
-          productId: String(productId),
-          name,
-          weight: weight || '',
-          price: Number(price),
-          img: img || '',
-          qty
+          productId: product.id,
+          name: product.name,
+          weight: product.weight,
+          price: product.price,
+          img: product.imageUrl,
+          qty: requestedQty
         }
       });
     }
@@ -144,8 +127,12 @@ router.post('/add', authMiddleware, async (req, res) => {
 router.put('/update', authMiddleware, async (req, res) => {
   try {
     const { productId, qty } = req.body;
+    const normalizedQty = Number(qty);
 
-    if (!productId || qty === undefined) {
+    if (
+      typeof productId !== 'string' || !productId.trim() ||
+      !Number.isSafeInteger(normalizedQty)
+    ) {
       return res.status(400).json({ message: 'Please provide productId and quantity' });
     }
 
@@ -154,13 +141,13 @@ router.put('/update', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'Cart not found' });
     }
 
-    const item = cart.items.find(item => item.productId === String(productId));
+    const item = cart.items.find(item => item.productId === productId.trim());
 
     if (!item) {
       return res.status(404).json({ message: 'Item not found in cart' });
     }
 
-    if (qty <= 0) {
+    if (normalizedQty <= 0) {
       // Delete item
       await prisma.cartItem.delete({
         where: { id: item.id }
@@ -257,7 +244,10 @@ router.delete('/clear', authMiddleware, async (req, res) => {
 // POST /api/cart/sync
 router.post('/sync', authMiddleware, async (req, res) => {
   try {
-    const { items = [] } = req.body;
+    const items = req.body?.items ?? [];
+    if (!Array.isArray(items) || items.length > 100) {
+      return res.status(400).json({ message: 'Items must be an array of at most 100 products' });
+    }
     const cart = await getOrCreateCart(req.userId);
     if (!cart) {
       return res.status(404).json({ message: 'User or Cart not found' });
@@ -265,23 +255,39 @@ router.post('/sync', authMiddleware, async (req, res) => {
 
     // Upsert items from local cart
     for (const item of items) {
-      const pId = String(item.id || item.productId);
+      const rawProductId = [item?.id, item?.productId].find(value =>
+        typeof value === 'string' && value.trim()
+      );
+      if (typeof rawProductId !== 'string' || !rawProductId.trim()) {
+        continue;
+      }
+
+      const pId = rawProductId.trim();
+      const requestedQty = Number(item?.qty);
+      const qty = Number.isFinite(requestedQty)
+        ? Math.min(99, Math.max(1, Math.floor(requestedQty)))
+        : 1;
+      const product = await prisma.product.findFirst({
+        where: { id: pId, inStock: true }
+      });
+      if (!product) continue;
+
       const existingItem = cart.items.find(ci => ci.productId === pId);
       if (existingItem) {
         await prisma.cartItem.update({
           where: { id: existingItem.id },
-          data: { qty: Math.max(existingItem.qty, item.qty || 1) }
+          data: { qty: Math.min(99, Math.max(existingItem.qty, qty)) }
         });
-      } else if (item.name && item.price !== undefined) {
+      } else {
         await prisma.cartItem.create({
           data: {
             cartId: cart.id,
-            productId: pId,
-            name: item.name,
-            weight: item.weight || '',
-            price: Number(item.price),
-            img: item.img || '',
-            qty: item.qty || 1
+            productId: product.id,
+            name: product.name,
+            weight: product.weight,
+            price: product.price,
+            img: product.imageUrl,
+            qty
           }
         });
       }

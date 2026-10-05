@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useAuth, useTheme } from '../../context';
+import { useAuth, useTheme, useToast } from '../../context';
+import { profileAPI } from '../../services/api';
 
 const Navbar = ({
   cartCount,
@@ -12,7 +13,8 @@ const Navbar = ({
   activeView = 'home'
 }) => {
   const { user, isAuthenticated, logout } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark, setTheme } = useTheme();
+  const { error: showError } = useToast();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -31,6 +33,19 @@ const Navbar = ({
   const handleNav = (view) => {
     if (onNavigate) onNavigate(view);
     setIsDropdownOpen(false);
+  };
+
+  const handleThemeToggle = async () => {
+    const nextTheme = isDark ? 'light' : 'dark';
+    if (isAuthenticated && user?.role === 'customer') {
+      try {
+        await profileAPI.updateTheme(nextTheme);
+      } catch (error) {
+        showError(error.message || 'Could not save your theme preference.');
+        return;
+      }
+    }
+    setTheme(nextTheme);
   };
 
   return (
@@ -52,7 +67,7 @@ const Navbar = ({
 
       {/* Main Nav Links: Home (if logged in), About Us, Contact Us */}
       <nav className="nav-links-section">
-        {isAuthenticated && (
+        {isAuthenticated && user?.role === 'customer' && (
           <button
             className={`nav-link-btn ${activeView === 'home' ? 'active' : ''}`}
             onClick={() => handleNav('home')}
@@ -72,10 +87,16 @@ const Navbar = ({
         >
           Contact Us
         </button>
+        <button
+          className={`nav-link-btn ${activeView === 'admin' ? 'active' : ''}`}
+          onClick={() => handleNav('admin')}
+        >
+          Admin Login
+        </button>
       </nav>
 
       {/* Search Bar - visible only when logged in */}
-      {isAuthenticated && (
+      {isAuthenticated && user?.role === 'customer' && (
         <div className="search-section">
           <div className="search-input-wrapper">
             <span className="search-icon">🔍</span>
@@ -100,7 +121,7 @@ const Navbar = ({
         {/* Dark / Light Theme Toggle */}
         <button
           className="theme-toggle-nav-btn"
-          onClick={toggleTheme}
+          onClick={handleThemeToggle}
           title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           aria-label="Toggle Theme"
         >
@@ -155,21 +176,21 @@ const Navbar = ({
                   <span className="dropdown-icon">👤</span>
                   <span>My Profile & Settings</span>
                 </div>
-                <div className="dropdown-item" onClick={() => handleNav('orders')}>
-                  <span className="dropdown-icon">📦</span>
-                  <span>My Orders</span>
-                </div>
-                <div className="dropdown-item" onClick={() => handleNav('wishlist')}>
-                  <span className="dropdown-icon">💖</span>
-                  <span>My Wishlist</span>
-                </div>
+                {user?.role === 'customer' && (
+                  <>
+                    <div className="dropdown-item" onClick={() => handleNav('orders')}>
+                      <span className="dropdown-icon">📦</span>
+                      <span>My Orders</span>
+                    </div>
+                    <div className="dropdown-item" onClick={() => handleNav('wishlist')}>
+                      <span className="dropdown-icon">💖</span>
+                      <span>My Wishlist</span>
+                    </div>
+                  </>
+                )}
                 <div className="dropdown-item" onClick={() => handleNav('support')}>
                   <span className="dropdown-icon">🎫</span>
                   <span>Help & Support Center</span>
-                </div>
-                <div className="dropdown-item" onClick={() => handleNav('admin')}>
-                  <span className="dropdown-icon">🔐</span>
-                  <span>Admin Dashboard</span>
                 </div>
 
                 <div className="dropdown-divider"></div>
@@ -195,7 +216,7 @@ const Navbar = ({
         )}
 
         {/* My Cart Button - Authenticated Only */}
-        {isAuthenticated && (
+        {isAuthenticated && user?.role === 'customer' && (
           <button className="my-cart-btn" onClick={onOpenCart}>
             <div className="cart-icon">🛒</div>
             <div className="cart-info">

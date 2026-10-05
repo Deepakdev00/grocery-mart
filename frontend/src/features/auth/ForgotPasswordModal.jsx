@@ -180,8 +180,10 @@ const ForgotPasswordModal = ({ onClose, onBackToLogin }) => {
     setLoading(true);
     try {
       const res = await authAPI.verifyResetOtp(email.trim(), otpCode);
-      const token = res?.resetToken || res?.token || `reset_${Date.now()}`;
-      setResetToken(token);
+      if (!res?.resetToken) {
+        throw new Error('The server did not return a valid password reset token.');
+      }
+      setResetToken(res.resetToken);
       success('OTP verified successfully');
       setStep(3);
     } catch (err) {

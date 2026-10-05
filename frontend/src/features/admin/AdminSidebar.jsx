@@ -7,7 +7,6 @@ const AdminSidebar = ({ activeTab, setActiveTab }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊', badge: null },
     { id: 'auth_management', label: 'Auth & RBAC', icon: '🛡️', badge: 'New' },
-    { id: 'products', label: 'Products', icon: '🛍️', badge: null },
     { id: 'orders', label: 'Orders', icon: '📦', badge: null },
     { id: 'users', label: 'Users', icon: '👥', badge: null },
     { id: 'support', label: 'Support', icon: '🎫', badge: null },

@@ -1,21 +1,13 @@
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-// Helper to get auth token
-const getToken = () => localStorage.getItem('token');
-
-// Helper to get admin token
-const getAdminToken = () => localStorage.getItem('adminToken');
-
 // Helper for making API requests
 const apiRequest = async (endpoint, options = {}) => {
-  const token = getToken();
-
   const config = {
     headers: {
       'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     },
+    credentials: 'include',
     ...options,
   };
 
@@ -23,32 +15,22 @@ const apiRequest = async (endpoint, options = {}) => {
     config.body = JSON.stringify(options.body);
   }
 
-  try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    const data = await response.json();
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.message || 'API request failed');
-    }
-
-    return data;
-  } catch (error) {
-    // If API fails, use mock/local storage instead
-    console.warn('API call failed, using mock auth:', error.message);
-    throw error;
+  if (!response.ok) {
+    throw new Error(data.message || 'API request failed');
   }
+  return data;
 };
 
-// Helper for making admin API requests (uses adminToken)
-const adminApiRequest = async (endpoint, options = {}) => {
-  const token = getAdminToken();
-
+export const adminApiRequest = async (endpoint, options = {}) => {
   const config = {
     headers: {
       'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     },
+    credentials: 'include',
     ...options,
   };
 
@@ -56,123 +38,28 @@ const adminApiRequest = async (endpoint, options = {}) => {
     config.body = JSON.stringify(options.body);
   }
 
-  try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    const data = await response.json();
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.message || 'API request failed');
-    }
-
-    return data;
-  } catch (error) {
-    console.warn('Admin API call failed:', error.message);
-    throw error;
+  if (!response.ok) {
+    throw new Error(data.message || 'API request failed');
   }
-};
-
-// Mock user storage (simulates backend database)
-const getMockUsers = () => {
-  const users = localStorage.getItem('mock_users');
-  return users ? JSON.parse(users) : [];
-};
-
-const saveMockUser = (user) => {
-  const users = getMockUsers();
-  users.push(user);
-  localStorage.setItem('mock_users', JSON.stringify(users));
-};
-
-const findMockUser = (email) => {
-  const users = getMockUsers();
-  return users.find(u => u.email === email);
+  return data;
 };
 
 // Auth API
 export const authAPI = {
-  signup: async (username, email, password) => {
-    try {
-      // Try real API first
-      return await apiRequest('/auth/signup', {
-        method: 'POST',
-        body: { username, email, password }
-      });
-    } catch (error) {
-      // Fallback to mock auth
-      const existingUser = findMockUser(email);
-      if (existingUser) {
-        throw new Error('Email already registered');
-      }
+  signup: (username, email, password) =>
+    apiRequest('/auth/signup', {
+      method: 'POST',
+      body: { username, email, password }
+    }),
 
-      const newUser = {
-        id: 'user_' + Date.now(),
-        username,
-        email,
-        password, // In production, never store plain passwords!
-        createdAt: new Date().toISOString()
-      };
-
-      saveMockUser(newUser);
-
-      const token = 'mock_token_' + Date.now();
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify({
-        id: newUser.id,
-        username: newUser.username,
-        email: newUser.email,
-        name: newUser.username
-      }));
-
-      return {
-        success: true,
-        message: 'Account created successfully',
-        token,
-        user: {
-          id: newUser.id,
-          username: newUser.username,
-          email: newUser.email,
-          name: newUser.username
-        }
-      };
-    }
-  },
-
-  login: async (email, password) => {
-    try {
-      // Try real API first
-      return await apiRequest('/auth/login', {
-        method: 'POST',
-        body: { email, password }
-      });
-    } catch (error) {
-      // Fallback to mock auth
-      const user = findMockUser(email);
-      if (!user || user.password !== password) {
-        throw new Error('Invalid email or password');
-      }
-
-      const token = 'mock_token_' + Date.now();
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify({
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        name: user.username
-      }));
-
-      return {
-        success: true,
-        message: 'Login successful',
-        token,
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          name: user.username
-        }
-      };
-    }
-  },
+  login: (email, password) =>
+    apiRequest('/auth/login', {
+      method: 'POST',
+      body: { email, password }
+    }),
 
   getMe: () => apiRequest('/auth/me'),
 
@@ -196,10 +83,9 @@ export const authAPI = {
       body: { token, newPassword }
     }),
 
-  refreshToken: (refreshToken) =>
+  refreshToken: () =>
     apiRequest('/auth/refresh-token', {
-      method: 'POST',
-      body: { refreshToken }
+      method: 'POST'
     }),
 
   getSessions: () => apiRequest('/auth/sessions'),
@@ -219,6 +105,61 @@ export const authAPI = {
       method: 'PUT',
       body: data
     }),
+};
+
+export const adminAPI = {
+  login: (email, password) =>
+    adminApiRequest('/admin/login', {
+      method: 'POST',
+      body: { email, password }
+    }),
+  getMe: () => adminApiRequest('/admin/me'),
+  logout: () => adminApiRequest('/admin/logout', { method: 'POST' })
+};
+
+export const productsAPI = {
+  getProducts: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.category) query.append('category', params.category);
+    if (params.search) query.append('search', params.search);
+    const queryString = query.toString();
+    return apiRequest(`/products${queryString ? `?${queryString}` : ''}`);
+  },
+  createProduct: (product) =>
+    adminApiRequest('/products', { method: 'POST', body: product }),
+  updateProduct: (id, product) =>
+    adminApiRequest(`/products/${encodeURIComponent(id)}`, { method: 'PUT', body: product }),
+  deleteProduct: (id) =>
+    adminApiRequest(`/products/${encodeURIComponent(id)}`, { method: 'DELETE' })
+};
+
+export const wishlistAPI = {
+  getWishlist: () => apiRequest('/wishlist'),
+  add: (productId) =>
+    apiRequest('/wishlist', { method: 'POST', body: { productId } }),
+  remove: (productId) =>
+    apiRequest(`/wishlist/${encodeURIComponent(productId)}`, { method: 'DELETE' })
+};
+
+export const profileAPI = {
+  get: () => apiRequest('/profile'),
+  update: (data) => apiRequest('/profile', { method: 'PUT', body: data }),
+  updateTheme: (theme) => apiRequest('/profile/theme', { method: 'PUT', body: { theme } }),
+  changePassword: (data) => apiRequest('/profile/change-password', { method: 'POST', body: data }),
+  deleteAccount: (password) => apiRequest('/profile/account', {
+    method: 'DELETE',
+    body: { password }
+  })
+};
+
+export const supportAPI = {
+  getTickets: () => apiRequest('/support/tickets'),
+  createTicket: (data) => apiRequest('/support/tickets', { method: 'POST', body: data }),
+  getTicket: (id) => apiRequest(`/support/tickets/${encodeURIComponent(id)}`),
+  reply: (id, message) => apiRequest(`/support/tickets/${encodeURIComponent(id)}/reply`, {
+    method: 'POST',
+    body: { message }
+  })
 };
 
 // User Management API (admin)
@@ -295,10 +236,6 @@ export const cartAPI = {
       method: 'POST',
       body: {
         productId: product.id,
-        name: product.name,
-        weight: product.weight,
-        price: product.price,
-        img: product.img,
         qty: product.qty || 1
       }
     }),
@@ -310,7 +247,7 @@ export const cartAPI = {
     }),
 
   removeFromCart: (productId) =>
-    apiRequest(`/cart/remove/${productId}`, {
+    apiRequest(`/cart/remove/${encodeURIComponent(productId)}`, {
       method: 'DELETE'
     }),
 
@@ -347,6 +284,11 @@ export const checkHealth = () =>
 
 const api = {
   auth: authAPI,
+  admin: adminAPI,
+  products: productsAPI,
+  wishlist: wishlistAPI,
+  profile: profileAPI,
+  support: supportAPI,
   cart: cartAPI,
   payment: paymentAPI,
   userManagement: userManagementAPI,

@@ -1,44 +1,34 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
+const { requireAdmin: adminAuthMiddleware } = require('../middleware/jwtAuth');
 
 const prisma = new PrismaClient();
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'grocery_mart_secret_key_2024';
-
-// Middleware to verify admin token
-const adminAuthMiddleware = (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
-  if (!token) {
-    return res.status(401).json({ message: 'No token provided' });
-  }
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.adminId = decoded.adminId;
-    next();
-  } catch (error) {
-    res.status(401).json({ message: 'Invalid token' });
-  }
-};
-
 // POST /api/products - Create product (admin only)
 router.post('/', adminAuthMiddleware, async (req, res) => {
   try {
-    const { name, price, category, imageUrl, description } = req.body;
+    const { name, weight = '', price, category, imageUrl, description } = req.body;
+    const numericPrice = Number(price);
 
-    if (!name || !price || !category || !imageUrl) {
+    if (
+      typeof name !== 'string' || !name.trim() ||
+      typeof weight !== 'string' ||
+      !Number.isFinite(numericPrice) || numericPrice <= 0 ||
+      typeof category !== 'string' || !category.trim() ||
+      typeof imageUrl !== 'string' || !imageUrl.trim()
+    ) {
       return res.status(400).json({ message: 'Please provide all required fields' });
     }
 
     const product = await prisma.product.create({
       data: {
-        name,
-        price: parseFloat(price),
-        category,
-        imageUrl,
-        description,
+        name: name.trim(),
+        weight: weight.trim(),
+        price: numericPrice,
+        category: category.trim(),
+        imageUrl: imageUrl.trim(),
+        description: typeof description === 'string' ? description.trim() : null,
         createdBy: req.adminId
       }
     });
@@ -104,18 +94,55 @@ router.get('/:id', async (req, res) => {
 // PUT /api/products/:id - Update product (admin only)
 router.put('/:id', adminAuthMiddleware, async (req, res) => {
   try {
-    const { name, price, category, imageUrl, description, inStock } = req.body;
+    const { name, weight, price, category, imageUrl, description, inStock } = req.body;
+    const updates = {};
+    if (name !== undefined) {
+      if (typeof name !== 'string' || !name.trim()) {
+        return res.status(400).json({ message: 'Name must be a non-empty string' });
+      }
+      updates.name = name.trim();
+    }
+    if (weight !== undefined) {
+      if (typeof weight !== 'string') {
+        return res.status(400).json({ message: 'Weight must be a string' });
+      }
+      updates.weight = weight.trim();
+    }
+    if (price !== undefined) {
+      const numericPrice = Number(price);
+      if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
+        return res.status(400).json({ message: 'Price must be a positive number' });
+      }
+      updates.price = numericPrice;
+    }
+    if (category !== undefined) {
+      if (typeof category !== 'string' || !category.trim()) {
+        return res.status(400).json({ message: 'Category must be a non-empty string' });
+      }
+      updates.category = category.trim();
+    }
+    if (imageUrl !== undefined) {
+      if (typeof imageUrl !== 'string' || !imageUrl.trim()) {
+        return res.status(400).json({ message: 'Image URL must be a non-empty string' });
+      }
+      updates.imageUrl = imageUrl.trim();
+    }
+    if (description !== undefined) {
+      if (typeof description !== 'string') {
+        return res.status(400).json({ message: 'Description must be a string' });
+      }
+      updates.description = description.trim();
+    }
+    if (inStock !== undefined) {
+      if (typeof inStock !== 'boolean') {
+        return res.status(400).json({ message: 'inStock must be a boolean' });
+      }
+      updates.inStock = inStock;
+    }
 
     const product = await prisma.product.update({
       where: { id: req.params.id },
-      data: {
-        name: name || undefined,
-        price: price ? parseFloat(price) : undefined,
-        category: category || undefined,
-        imageUrl: imageUrl || undefined,
-        description: description || undefined,
-        inStock: inStock !== undefined ? inStock : undefined
-      }
+      data: updates
     });
 
     res.json({

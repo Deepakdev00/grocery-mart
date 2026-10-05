@@ -411,7 +411,7 @@
 ---
 
 ### BUG-023: Incomplete Order Status State Machine on Backend
-- **Severity:** 🟡 Low
+- **Severity:** 🔵 Low
 - **Category:** Business Logic
 - **Affected File:** [`backend/routes/payment.js`](backend/routes/payment.js)
 - **Description:**  

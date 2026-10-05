@@ -1,28 +1,10 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
+const { requireUser: authMiddleware } = require('../middleware/jwtAuth');
 
 const prisma = new PrismaClient();
 const router = express.Router();
-
-const JWT_SECRET = process.env.JWT_SECRET || 'grocery_mart_secret_key_2024';
-
-// Middleware to verify user token
-const authMiddleware = (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
-  if (!token) {
-    return res.status(401).json({ message: 'No token provided' });
-  }
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.userId = decoded.userId;
-    next();
-  } catch (error) {
-    res.status(401).json({ message: 'Invalid token' });
-  }
-};
 
 // GET /api/profile - Get user profile
 router.get('/', authMiddleware, async (req, res) => {

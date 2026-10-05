@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth, useToast, useTheme } from '../context';
+import { profileAPI } from '../services/api';
 import { ActiveSessions } from '../features/auth';
 import './UserProfile.css';
 
@@ -25,29 +26,20 @@ const UserProfile = ({ onBack }) => {
     confirm: false,
   });
 
-  const token = localStorage.getItem('token');
-  const API_BASE = 'http://localhost:5000/api';
-
   const fetchProfile = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.user?.profile) {
-          setPhoneNumber(data.user.profile.phoneNumber || '');
-          setProfileImage(data.user.profile.profileImage || '');
-          if (data.user.profile.theme) {
-            setTheme(data.user.profile.theme);
-          }
+      const data = await profileAPI.get();
+      if (data.user?.profile) {
+        setPhoneNumber(data.user.profile.phoneNumber || '');
+        setProfileImage(data.user.profile.profileImage || '');
+        if (data.user.profile.theme) {
+          setTheme(data.user.profile.theme);
         }
       }
     } catch (error) {
       console.error('Fetch profile error:', error);
     }
-  }, [API_BASE, token, setTheme]);
+  }, [setTheme]);
 
   useEffect(() => {
     fetchProfile();
@@ -56,33 +48,10 @@ const UserProfile = ({ onBack }) => {
   const updateProfile = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/profile`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ phoneNumber, profileImage }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        addToast({
-          message: 'Profile updated successfully ✅',
-          type: 'success',
-        });
-      } else {
-        addToast({
-          message: data.message || 'Failed to update profile',
-          type: 'error',
-        });
-      }
+      await profileAPI.update({ phoneNumber, profileImage });
+      addToast({ message: 'Profile updated successfully', type: 'success' });
     } catch (error) {
-      addToast({
-        message: 'Network error updating profile',
-        type: 'error',
-      });
+      addToast({ message: error.message || 'Failed to update profile', type: 'error' });
     }
     setLoading(false);
   };
@@ -106,57 +75,27 @@ const UserProfile = ({ onBack }) => {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/profile/change-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        addToast({
-          message: 'Password changed successfully ✅',
-          type: 'success',
-        });
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-      } else {
-        addToast({
-          message: data.message || 'Failed to change password',
-          type: 'error',
-        });
-      }
+      await profileAPI.changePassword({ currentPassword, newPassword, confirmPassword });
+      addToast({ message: 'Password changed successfully', type: 'success' });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
     } catch (error) {
-      addToast({
-        message: 'Network error changing password',
-        type: 'error',
-      });
+      addToast({ message: error.message || 'Failed to change password', type: 'error' });
     }
     setLoading(false);
   };
 
   const handleThemeChange = async (newTheme) => {
-    setTheme(newTheme);
     try {
-      await fetch(`${API_BASE}/profile/theme`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ theme: newTheme }),
-      });
+      await profileAPI.updateTheme(newTheme);
+      setTheme(newTheme);
       addToast({
-        message: `Switched to ${newTheme === 'dark' ? '🌙 Dark' : '☀️ Light'} Mode!`,
+        message: `Switched to ${newTheme === 'dark' ? 'Dark' : 'Light'} Mode`,
         type: 'success',
       });
     } catch (error) {
-      console.error('Theme update error:', error);
+      addToast({ message: error.message || 'Could not update the theme', type: 'error' });
     }
   };
 
@@ -169,35 +108,12 @@ const UserProfile = ({ onBack }) => {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/profile/account`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ password }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        addToast({
-          message: 'Account deleted successfully',
-          type: 'success',
-        });
-        logout();
-        onBack();
-      } else {
-        addToast({
-          message: data.message || 'Failed to delete account',
-          type: 'error',
-        });
-      }
+      await profileAPI.deleteAccount(password);
+      addToast({ message: 'Account deleted successfully', type: 'success' });
+      logout();
+      onBack();
     } catch (error) {
-      addToast({
-        message: 'Network error deleting account',
-        type: 'error',
-      });
+      addToast({ message: error.message || 'Failed to delete account', type: 'error' });
     }
     setLoading(false);
   };

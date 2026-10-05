@@ -2,11 +2,12 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
+const JWT_SECRET = require('../config/auth');
+const { setAdminCookie, clearAdminCookie } = require('../middleware/cookies');
+const { requireAdmin } = require('../middleware/jwtAuth');
 
 const prisma = new PrismaClient();
 const router = express.Router();
-
-const JWT_SECRET = process.env.JWT_SECRET || 'grocery_mart_secret_key_2024';
 
 const generateToken = (adminId) => {
   return jwt.sign({ adminId }, JWT_SECRET, { expiresIn: '7d' });
@@ -16,6 +17,11 @@ const generateToken = (adminId) => {
 // Create initial admin account
 router.post('/signup', async (req, res) => {
   try {
+    const creationSecret = process.env.ADMIN_CREATION_SECRET;
+    if (!creationSecret || req.get('x-admin-creation-secret') !== creationSecret) {
+      return res.status(403).json({ message: 'Admin registration is not authorized' });
+    }
+
     const { username, email, password } = req.body;
 
     if (!username || !email || !password) {
@@ -50,10 +56,20 @@ router.post('/signup', async (req, res) => {
     });
 
     const token = generateToken(admin.id);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await prisma.adminSession.create({
+      data: {
+        adminId: admin.id,
+        token,
+        ipAddress: req.ip || req.socket.remoteAddress,
+        userAgent: req.get('user-agent'),
+        expiresAt
+      }
+    });
+    setAdminCookie(res, token);
 
     res.status(201).json({
       message: 'Admin account created successfully',
-      token,
       admin: {
         id: admin.id,
         username: admin.username,
@@ -109,9 +125,10 @@ router.post('/login', async (req, res) => {
       }
     });
 
+    setAdminCookie(res, token);
+
     res.json({
       message: 'Admin login successful',
-      token,
       admin: {
         id: admin.id,
         username: admin.username,
@@ -127,17 +144,10 @@ router.post('/login', async (req, res) => {
 
 // GET /api/admin/me
 // Get current admin info
-router.get('/me', async (req, res) => {
+router.get('/me', requireAdmin, async (req, res) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-
-    if (!token) {
-      return res.status(401).json({ message: 'No token provided' });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET);
     const admin = await prisma.admin.findUnique({
-      where: { id: decoded.adminId }
+      where: { id: req.adminId }
     });
 
     if (!admin) {
@@ -146,7 +156,7 @@ router.get('/me', async (req, res) => {
 
     // Update last seen
     await prisma.adminSession.updateMany({
-      where: { token },
+      where: { token: req.token, isActive: true },
       data: { lastSeenAt: new Date() }
     });
 
@@ -165,19 +175,17 @@ router.get('/me', async (req, res) => {
 
 // GET /api/admin/logout
 // Logout and deactivate session
-router.get('/logout', async (req, res) => {
+router.post('/logout', requireAdmin, async (req, res) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    await prisma.adminSession.updateMany({
+      where: { token: req.token },
+      data: { isActive: false }
+    });
 
-    if (token) {
-      await prisma.adminSession.updateMany({
-        where: { token },
-        data: { isActive: false }
-      });
-    }
-
+    clearAdminCookie(res);
     res.json({ message: 'Admin logged out successfully' });
   } catch (error) {
+    clearAdminCookie(res);
     res.status(500).json({ message: 'Server error during logout' });
   }
 });

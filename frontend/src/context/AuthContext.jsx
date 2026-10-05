@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { authAPI, cartAPI } from '../services/api';
+import { authAPI } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -36,11 +36,6 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.warn('Server logout failed:', error.message);
     }
-
-    // Clear all auth data from localStorage
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
 
     // Reset all state
     setUser(null);
@@ -103,23 +98,12 @@ export const AuthProvider = ({ children }) => {
 
   // Token refresh logic
   const refreshToken = useCallback(async () => {
-    const storedRefreshToken = localStorage.getItem('refreshToken');
-    if (!storedRefreshToken) return;
-
     try {
-      const data = await authAPI.refreshToken(storedRefreshToken);
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-      }
-      if (data.refreshToken) {
-        localStorage.setItem('refreshToken', data.refreshToken);
-      }
+      await authAPI.refreshToken();
     } catch (error) {
       console.error('Token refresh failed:', error);
-      // If refresh fails, log out
-      handleLogout();
     }
-  }, [handleLogout]);
+  }, []);
 
   // Auto-refresh token on interval
   useEffect(() => {
@@ -137,22 +121,16 @@ export const AuthProvider = ({ children }) => {
   // Check for existing token on mount
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const data = await authAPI.getMe();
-          setUser(data.user);
-          setIsAuthenticated(true);
-        } catch (error) {
-          // Token invalid, clear it
-          localStorage.removeItem('token');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('user');
-          setUser(null);
-          setIsAuthenticated(false);
-        }
+      try {
+        const data = await authAPI.getMe();
+        setUser(data.user);
+        setIsAuthenticated(true);
+      } catch {
+        setUser(null);
+        setIsAuthenticated(false);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     checkAuth();
@@ -160,10 +138,6 @@ export const AuthProvider = ({ children }) => {
 
   const signup = async (username, email, password) => {
     const data = await authAPI.signup(username, email, password);
-    localStorage.setItem('token', data.token);
-    if (data.refreshToken) {
-      localStorage.setItem('refreshToken', data.refreshToken);
-    }
     setUser(data.user);
     setIsAuthenticated(true);
     return data;
@@ -171,24 +145,10 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const data = await authAPI.login(email, password);
-    localStorage.setItem('token', data.token);
-    if (data.refreshToken) {
-      localStorage.setItem('refreshToken', data.refreshToken);
-    }
     setUser(data.user);
     setIsAuthenticated(true);
     return data;
   };
-
-  const syncCartToServer = useCallback(async (localCart) => {
-    if (isAuthenticated && localCart.length > 0) {
-      try {
-        await cartAPI.syncCart(localCart);
-      } catch (error) {
-        console.error('Failed to sync cart:', error);
-      }
-    }
-  }, [isAuthenticated]);
 
   // Dismiss the session warning
   const dismissSessionWarning = useCallback(() => {
@@ -203,7 +163,6 @@ export const AuthProvider = ({ children }) => {
   // Update user state (e.g., after profile changes)
   const updateUser = useCallback((updatedUser) => {
     setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
   }, []);
 
   const value = {
@@ -213,7 +172,6 @@ export const AuthProvider = ({ children }) => {
     signup,
     login,
     logout: handleLogout,
-    syncCartToServer,
     userRole,
     showSessionWarning,
     dismissSessionWarning,

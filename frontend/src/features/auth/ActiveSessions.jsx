@@ -110,16 +110,7 @@ const ActiveSessions = () => {
 
   // Check if session is current session
   const isCurrentSession = (session) => {
-    if (session.isCurrent === true) return true;
-    const currentToken = localStorage.getItem('token');
-    if (currentToken && session.token) {
-      return (
-        session.token === currentToken ||
-        currentToken.includes(session.token) ||
-        session.token.includes(currentToken)
-      );
-    }
-    return false;
+    return session.isCurrent === true;
   };
 
   const fetchSessions = useCallback(async () => {
@@ -138,37 +129,10 @@ const ActiveSessions = () => {
         list = [data.session];
       }
 
-      const currentToken = localStorage.getItem('token');
-      if (list.length > 0 && currentToken) {
-        const hasMatch = list.some(
-          (s) => s.isCurrent || (s.token && s.token === currentToken)
-        );
-        if (!hasMatch) {
-          list[0].isCurrent = true;
-        }
-      }
-
       setSessions(list);
     } catch (err) {
-      console.warn('Failed to fetch sessions from server, using local session state:', err.message);
-      const currentToken = localStorage.getItem('token');
-      if (currentToken) {
-        const mockCurrent = [
-          {
-            id: 'current_session_' + Date.now(),
-            token: currentToken,
-            ipAddress: '127.0.0.1 (Local)',
-            userAgent: navigator.userAgent,
-            loginAt: new Date().toISOString(),
-            lastActiveAt: new Date().toISOString(),
-            isCurrent: true,
-          },
-        ];
-        setSessions(mockCurrent);
-      } else {
-        setError('Unable to load active sessions. Please try again.');
-        showToastError('Unable to load active sessions');
-      }
+      setError('Unable to load active sessions. Please try again.');
+      showToastError(err.message || 'Unable to load active sessions');
     } finally {
       setLoading(false);
     }
@@ -384,7 +348,7 @@ const ActiveSessions = () => {
 
             return (
               <div
-                key={session.id || session.token || Math.random()}
+                key={session.id}
                 style={{
                   display: 'flex',
                   alignItems: 'center',

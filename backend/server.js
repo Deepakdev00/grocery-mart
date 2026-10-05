@@ -9,8 +9,23 @@ const app = express();
 const prisma = new PrismaClient();
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:3000')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin)),
+  credentials: true
+}));
+app.use(express.json({ limit: '100kb' }));
+app.use((req, res, next) => {
+  const origin = req.get('origin');
+  if (origin && !allowedOrigins.includes(origin)) {
+    return res.status(403).json({ message: 'Origin not allowed' });
+  }
+  next();
+});
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -22,6 +37,7 @@ const productRoutes = require('./routes/products');
 const profileRoutes = require('./routes/profile');
 const supportRoutes = require('./routes/support');
 const userManagementRoutes = require('./routes/userManagement');
+const wishlistRoutes = require('./routes/wishlist');
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -33,6 +49,7 @@ app.use('/api/admin/user-management', userManagementRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/wishlist', wishlistRoutes);
 
 // Health check route
 app.get('/api/health', async (req, res) => {

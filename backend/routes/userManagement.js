@@ -1,12 +1,10 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
+const { requireAdmin: adminAuthMiddleware } = require('../middleware/jwtAuth');
 
 const prisma = new PrismaClient();
 const router = express.Router();
-
-const JWT_SECRET = process.env.JWT_SECRET || 'grocery_mart_secret_key_2024';
 
 // Helper to get client IP
 const getClientIp = (req) => {
@@ -19,38 +17,6 @@ const getUserAgent = (req) => {
 };
 
 // Admin authentication middleware
-const adminAuthMiddleware = async (req, res, next) => {
-  try {
-    const authHeader = req.header('Authorization');
-    const token = authHeader?.replace('Bearer ', '');
-
-    if (!token) {
-      return res.status(401).json({ message: 'No token provided' });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET);
-
-    if (!decoded.adminId) {
-      return res.status(401).json({ message: 'Invalid token: Not an admin token' });
-    }
-
-    const admin = await prisma.admin.findUnique({
-      where: { id: decoded.adminId }
-    });
-
-    if (!admin) {
-      return res.status(401).json({ message: 'Admin not found' });
-    }
-
-    req.admin = admin;
-    req.adminId = admin.id;
-    next();
-  } catch (error) {
-    console.error('Admin authentication error:', error.message);
-    return res.status(401).json({ message: 'Invalid or expired token' });
-  }
-};
-
 // Apply admin authentication to all routes in this router
 router.use(adminAuthMiddleware);
 
