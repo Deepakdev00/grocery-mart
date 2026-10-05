@@ -207,7 +207,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Find user by email OR username (case-insensitive)
-    const user = await prisma.user.findFirst({
+    let user = await prisma.user.findFirst({
       where: {
         OR: [
           { email: { equals: identifier, mode: 'insensitive' } },
@@ -215,6 +215,32 @@ router.post('/login', async (req, res) => {
         ]
       }
     });
+
+    // If not found in User table, check Admin table
+    let isAdminAccount = false;
+    if (!user) {
+      const admin = await prisma.admin.findFirst({
+        where: {
+          OR: [
+            { email: { equals: identifier, mode: 'insensitive' } },
+            { username: { equals: identifier, mode: 'insensitive' } }
+          ]
+        }
+      });
+
+      if (admin) {
+        // Treat admin as a user-like object for the rest of the flow
+        isAdminAccount = true;
+        user = {
+          id: admin.id,
+          username: admin.username,
+          email: admin.email,
+          password: admin.password,
+          role: admin.role || 'admin',
+          status: 'active' // Admin accounts are always active
+        };
+      }
+    }
 
     if (!user) {
       await prisma.loginLog.create({
@@ -228,8 +254,8 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Check if user status is 'active'
-    if (user.status !== 'active') {
+    // Check if user status is 'active' (only applies to regular users)
+    if (!isAdminAccount && user.status !== 'active') {
       await prisma.loginLog.create({
         data: {
           userId: user.id,
@@ -245,15 +271,17 @@ router.post('/login', async (req, res) => {
     // Compare password with bcrypt
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      await prisma.loginLog.create({
-        data: {
-          userId: user.id,
-          email: user.email,
-          action: 'login_failed',
-          ipAddress,
-          userAgent
-        }
-      });
+      if (!isAdminAccount) {
+        await prisma.loginLog.create({
+          data: {
+            userId: user.id,
+            email: user.email,
+            action: 'login_failed',
+            ipAddress,
+            userAgent
+          }
+        });
+      }
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
@@ -263,30 +291,43 @@ router.post('/login', async (req, res) => {
     const deviceInfo = getDeviceInfo(userAgent);
     const sessionExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    // Create ActiveSession record
-    await prisma.activeSession.create({
-      data: {
-        userId: user.id,
-        token,
-        refreshToken,
-        ipAddress,
-        userAgent,
-        deviceInfo,
-        expiresAt: sessionExpiresAt,
-        isActive: true
-      }
-    });
+    // For regular users: create ActiveSession + LoginLog records
+    if (!isAdminAccount) {
+      await prisma.activeSession.create({
+        data: {
+          userId: user.id,
+          token,
+          refreshToken,
+          ipAddress,
+          userAgent,
+          deviceInfo,
+          expiresAt: sessionExpiresAt,
+          isActive: true
+        }
+      });
 
-    // Create LoginLog entry
-    await prisma.loginLog.create({
-      data: {
-        userId: user.id,
-        email: user.email,
-        action: 'login_success',
-        ipAddress,
-        userAgent
-      }
-    });
+      await prisma.loginLog.create({
+        data: {
+          userId: user.id,
+          email: user.email,
+          action: 'login_success',
+          ipAddress,
+          userAgent
+        }
+      });
+    } else {
+      // For admin accounts: create AdminSession record
+      await prisma.adminSession.create({
+        data: {
+          adminId: user.id,
+          token,
+          ipAddress,
+          userAgent,
+          expiresAt: sessionExpiresAt,
+          isActive: true
+        }
+      });
+    }
 
     return res.json({
       message: 'Login successful',
@@ -297,7 +338,7 @@ router.post('/login', async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role,
-        status: user.status,
+        status: user.status || 'active',
         name: user.username
       }
     });

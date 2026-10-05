@@ -70,9 +70,6 @@ function AppContent() {
     const loadCart = async () => {
       if (isAuthenticated) {
         try {
-          if (cart.length > 0) {
-            await syncCartToServer(cart);
-          }
           const data = await cartAPI.getCart();
           if (data.cart && data.cart.items) {
             setCart(data.cart.items.map((item) => ({
@@ -90,7 +87,7 @@ function AppContent() {
       }
     };
     loadCart();
-  }, [isAuthenticated, cart, syncCartToServer]);
+  }, [isAuthenticated]);
 
   const addToCart = useCallback(async (product) => {
     setCart((prev) => {
