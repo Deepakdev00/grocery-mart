@@ -4,7 +4,7 @@ import ProductCard from './ProductCard';
 const Wishlist = ({ wishlistItems, addToCart, onToggleLike, onProductClick, onOpenLogin }) => {
   return (
     <div className="content-area">
-      <h2 className="cat-title" style={{ marginBottom: '20px' }}>My Wishlist 💕</h2>
+      <h2 className="cat-title" style={{ marginBottom: '24px' }}>My Wishlist 💕</h2>
 
       {wishlistItems && wishlistItems.length > 0 ? (
         <div className="product-grid">
@@ -21,10 +21,10 @@ const Wishlist = ({ wishlistItems, addToCart, onToggleLike, onProductClick, onOp
           ))}
         </div>
       ) : (
-        <div style={{ textAlign: 'center', marginTop: '60px', color: '#666' }}>
-          <div style={{ fontSize: '40px', marginBottom: '10px' }}>💔</div>
-          <h3>Your wishlist is empty</h3>
-          <p>Explore the store and click the heart icon on your favorite items to add them here.</p>
+        <div style={{ textAlign: 'center', marginTop: '60px', color: 'var(--text-muted)' }}>
+          <div style={{ fontSize: '46px', marginBottom: '14px' }}>💖</div>
+          <h3 style={{ color: 'var(--text-heading)' }}>Your wishlist is empty</h3>
+          <p>Explore the store and click the heart icon on your favorite items to save them for later.</p>
         </div>
       )}
     </div>

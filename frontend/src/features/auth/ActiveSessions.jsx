@@ -194,11 +194,10 @@ const ActiveSessions = () => {
 
   return (
     <div
+      className="glass-panel"
       style={{
-        backgroundColor: '#ffffff',
-        borderRadius: '12px',
+        borderRadius: '18px',
         padding: '24px',
-        border: '1px solid #e5e7eb',
         marginTop: '20px',
         boxSizing: 'border-box',
       }}
@@ -213,7 +212,7 @@ const ActiveSessions = () => {
           gap: '12px',
           marginBottom: '20px',
           paddingBottom: '16px',
-          borderBottom: '1px solid #f3f4f6',
+          borderBottom: '1px solid var(--border-glass-subtle)',
         }}
       >
         <div>
@@ -221,8 +220,8 @@ const ActiveSessions = () => {
             style={{
               margin: '0 0 4px 0',
               fontSize: '18px',
-              fontWeight: '700',
-              color: '#111827',
+              fontWeight: '800',
+              color: 'var(--text-heading)',
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
@@ -234,7 +233,7 @@ const ActiveSessions = () => {
             style={{
               margin: 0,
               fontSize: '13px',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
             }}
           >
             Manage devices currently logged into your GroceryMart account.
@@ -247,31 +246,19 @@ const ActiveSessions = () => {
             onClick={handleRevokeAllOther}
             disabled={revokingAll || loading}
             style={{
-              backgroundColor: '#fee2e2',
-              color: '#dc2626',
-              border: '1px solid #fca5a5',
-              borderRadius: '8px',
+              backgroundColor: 'var(--color-danger-light)',
+              color: 'var(--color-danger)',
+              border: '1px solid var(--color-danger)',
+              borderRadius: '10px',
               padding: '8px 16px',
               fontSize: '13px',
-              fontWeight: '600',
+              fontWeight: '700',
               cursor: revokingAll || loading ? 'not-allowed' : 'pointer',
               opacity: revokingAll || loading ? 0.7 : 1,
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
               transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => {
-              if (!revokingAll && !loading) {
-                e.currentTarget.style.backgroundColor = '#fecaca';
-                e.currentTarget.style.borderColor = '#f87171';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!revokingAll && !loading) {
-                e.currentTarget.style.backgroundColor = '#fee2e2';
-                e.currentTarget.style.borderColor = '#fca5a5';
-              }
             }}
           >
             <span>🚪</span>
@@ -354,10 +341,10 @@ const ActiveSessions = () => {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '16px',
-                  borderRadius: '10px',
-                  border: isCurrent ? '1.5px solid #86efac' : '1px solid #e5e7eb',
-                  backgroundColor: isCurrent ? '#f0fdf4' : '#fafafa',
-                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+                  borderRadius: '14px',
+                  border: isCurrent ? '1.5px solid var(--color-primary)' : '1px solid var(--border-glass)',
+                  backgroundColor: isCurrent ? 'var(--color-primary-light)' : 'var(--bg-input)',
+                  boxShadow: 'var(--shadow-sm)',
                   transition: 'all 0.2s ease',
                   flexWrap: 'wrap',
                   gap: '12px',
@@ -377,8 +364,8 @@ const ActiveSessions = () => {
                     style={{
                       width: '46px',
                       height: '46px',
-                      borderRadius: '10px',
-                      backgroundColor: isCurrent ? '#dcfce7' : '#e5e7eb',
+                      borderRadius: '12px',
+                      backgroundColor: isCurrent ? 'rgba(16, 185, 129, 0.25)' : 'var(--border-glass)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -393,8 +380,8 @@ const ActiveSessions = () => {
                     <div
                       style={{
                         fontSize: '15px',
-                        fontWeight: '600',
-                        color: '#111827',
+                        fontWeight: '700',
+                        color: 'var(--text-heading)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
@@ -405,10 +392,10 @@ const ActiveSessions = () => {
                       {isCurrent && (
                         <span
                           style={{
-                            backgroundColor: '#22c55e',
+                            backgroundColor: 'var(--color-primary)',
                             color: '#ffffff',
                             fontSize: '11px',
-                            fontWeight: '700',
+                            fontWeight: '800',
                             padding: '2px 8px',
                             borderRadius: '12px',
                             textTransform: 'uppercase',

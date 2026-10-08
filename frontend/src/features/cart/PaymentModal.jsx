@@ -56,8 +56,10 @@ const PaymentModal = ({ onClose, onPaymentSuccess, cart, onOpenLogin }) => {
           <div className="bill-row total"><span>Total due on delivery</span><span>₹{grandTotal.toFixed(2)}</span></div>
         </div>
 
-        <form onSubmit={placeOrder}>
-          <label htmlFor="delivery-address">Delivery address</label>
+        <form onSubmit={placeOrder} style={{ marginTop: '16px' }}>
+          <label htmlFor="delivery-address" style={{ fontWeight: '750', fontSize: '13.5px', color: 'var(--text-secondary)' }}>
+            Delivery address
+          </label>
           <textarea
             id="delivery-address"
             value={deliveryAddress}
@@ -66,12 +68,27 @@ const PaymentModal = ({ onClose, onPaymentSuccess, cart, onOpenLogin }) => {
             rows={3}
             required
             placeholder="House/flat, street, area, city, PIN code"
-            style={{ boxSizing: 'border-box', width: '100%', margin: '8px 0 16px', padding: '12px' }}
+            style={{
+              boxSizing: 'border-box',
+              width: '100%',
+              margin: '8px 0 16px',
+              padding: '12px 14px',
+              borderRadius: '12px',
+              border: '1px solid var(--border-glass)',
+              background: 'var(--bg-input)',
+              color: 'var(--text-primary)',
+              fontFamily: 'inherit',
+              fontSize: '14px',
+              outline: 'none',
+              transition: 'all 0.2s',
+            }}
           />
 
-          {error && <p role="alert" style={{ color: '#c00' }}>{error}</p>}
+          {error && <p role="alert" style={{ color: 'var(--color-danger)', fontSize: '13px', fontWeight: '600' }}>{error}</p>}
 
-          <p>Cash on Delivery is currently the only supported payment method.</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '12.5px', margin: '4px 0 16px' }}>
+            💵 Cash on Delivery is currently the supported payment method.
+          </p>
           <button className="pay-checkout-btn full-width" type="submit" disabled={loading || cart.length === 0}>
             {loading ? 'Placing order...' : 'Place order · COD'}
           </button>

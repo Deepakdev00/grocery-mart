@@ -60,7 +60,7 @@ const Cart = ({ cart, onClose, updateQty, onOpenPayment }) => {
               </div>
               <div className="bill-row">
                 <span>Delivery Charge</span>
-                <span style={{ color: deliveryFee === 0 ? 'green' : 'black' }}>
+                <span style={{ color: deliveryFee === 0 ? 'var(--color-primary)' : 'var(--text-primary)', fontWeight: '700' }}>
                   {deliveryFee === 0 ? 'FREE' : `₹${deliveryFee}`}
                 </span>
               </div>

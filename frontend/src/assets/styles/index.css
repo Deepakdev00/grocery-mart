@@ -1,100 +1,102 @@
 :root {
-  /* Light Theme Variables */
-  --bg-primary: #f4f6fb;
-  --bg-secondary: #ffffff;
-  --bg-card: #ffffff;
-  --bg-input: #f8f8f8;
-  --bg-hover: #f0fdf4;
-  --bg-hover-subtle: #f5f5f5;
-  --bg-modal: #ffffff;
-  --bg-overlay: rgba(0, 0, 0, 0.6);
-  --bg-pill: #f0f0f0;
+  /* Font Stack - Ultra Modern */
+  --font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
-  --text-primary: #1c1c1c;
-  --text-secondary: #4a5568;
-  --text-muted: #718096;
-  --text-heading: #0f172a;
+  /* Glassmorphism & Light Theme Tokens */
+  --bg-primary: #f6f8fc;
+  --bg-secondary: rgba(255, 255, 255, 0.75);
+  --bg-card: rgba(255, 255, 255, 0.82);
+  --bg-card-hover: rgba(255, 255, 255, 0.95);
+  --bg-input: rgba(243, 244, 248, 0.8);
+  --bg-hover: rgba(16, 185, 129, 0.08);
+  --bg-hover-subtle: rgba(241, 245, 249, 0.7);
+  --bg-modal: rgba(255, 255, 255, 0.88);
+  --bg-overlay: rgba(15, 23, 42, 0.5);
+  --bg-pill: rgba(241, 245, 249, 0.85);
 
-  --border-color: #e2e8f0;
-  --border-light: #f0f0f0;
-  --border-focus: #0c831f;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-heading: #090d16;
 
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.12);
+  --border-color: rgba(226, 232, 240, 0.85);
+  --border-glass: rgba(255, 255, 255, 0.65);
+  --border-glass-subtle: rgba(226, 232, 240, 0.5);
+  --border-light: rgba(241, 245, 249, 0.7);
+  --border-focus: #10b981;
 
-  --color-primary: #0c831f;
-  --color-primary-hover: #096818;
-  --color-primary-light: #e8f7eb;
-  --color-accent: #becb08;
-  --color-danger: #e24056;
+  --glass-blur: blur(16px) saturate(180%);
+  --glass-blur-deep: blur(24px) saturate(200%);
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 8px 24px -4px rgba(0, 0, 0, 0.07), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 20px 35px -8px rgba(0, 0, 0, 0.11), 0 8px 16px -4px rgba(0, 0, 0, 0.05);
+  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  --shadow-glow: 0 0 28px -4px rgba(16, 185, 129, 0.35);
+  --shadow-glow-accent: 0 0 24px -4px rgba(245, 158, 11, 0.35);
+
+  /* Primary Brand - Vibrant Modern Emerald */
+  --color-primary: #059669;
+  --color-primary-rgb: 5, 150, 105;
+  --color-primary-hover: #047857;
+  --color-primary-light: rgba(16, 185, 129, 0.12);
+  --color-primary-glow: rgba(16, 185, 129, 0.35);
+  --color-accent: #eab308;
+  --color-accent-light: rgba(234, 179, 8, 0.15);
+  --color-danger: #ef4444;
+  --color-danger-light: rgba(239, 68, 68, 0.12);
+
+  /* Hero UI / Aceternity Mesh Gradients */
+  --mesh-orb-1: rgba(16, 185, 129, 0.12);
+  --mesh-orb-2: rgba(99, 102, 241, 0.1);
+  --mesh-orb-3: rgba(234, 179, 8, 0.07);
 }
 
 [data-theme="dark"] {
-  /* Dark Theme Variables */
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-card: #1e293b;
-  --bg-input: #334155;
-  --bg-hover: #1e3a2b;
-  --bg-hover-subtle: #293548;
-  --bg-modal: #1e293b;
-  --bg-overlay: rgba(0, 0, 0, 0.75);
-  --bg-pill: #334155;
+  /* Dark Glassmorphism Tokens */
+  --bg-primary: #0a0f1d;
+  --bg-secondary: rgba(15, 23, 42, 0.72);
+  --bg-card: rgba(20, 31, 54, 0.7);
+  --bg-card-hover: rgba(28, 44, 76, 0.85);
+  --bg-input: rgba(30, 41, 59, 0.75);
+  --bg-hover: rgba(16, 185, 129, 0.16);
+  --bg-hover-subtle: rgba(30, 41, 59, 0.65);
+  --bg-modal: rgba(15, 23, 42, 0.85);
+  --bg-overlay: rgba(3, 7, 18, 0.75);
+  --bg-pill: rgba(30, 41, 59, 0.8);
 
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
   --text-heading: #ffffff;
 
-  --border-color: #334155;
-  --border-light: #2d3748;
-  --border-focus: #22c55e;
+  --border-color: rgba(51, 65, 85, 0.65);
+  --border-glass: rgba(255, 255, 255, 0.1);
+  --border-glass-subtle: rgba(255, 255, 255, 0.06);
+  --border-light: rgba(30, 41, 59, 0.65);
+  --border-focus: #34d399;
 
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --glass-blur: blur(18px) saturate(190%);
+  --glass-blur-deep: blur(28px) saturate(220%);
 
-  --color-primary: #22c55e;
-  --color-primary-hover: #16a34a;
-  --color-primary-light: rgba(34, 197, 94, 0.15);
-  --color-accent: #d4e019;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 24px -4px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 20px 45px -8px rgba(0, 0, 0, 0.7);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --shadow-glow: 0 0 32px -4px rgba(16, 185, 129, 0.45);
+  --shadow-glow-accent: 0 0 28px -4px rgba(234, 179, 8, 0.4);
+
+  --color-primary: #10b981;
+  --color-primary-rgb: 16, 185, 129;
+  --color-primary-hover: #059669;
+  --color-primary-light: rgba(16, 185, 129, 0.18);
+  --color-primary-glow: rgba(16, 185, 129, 0.45);
+  --color-accent: #facc15;
+  --color-accent-light: rgba(250, 204, 21, 0.2);
   --color-danger: #f87171;
-}
+  --color-danger-light: rgba(248, 113, 113, 0.18);
 
-* {
-  box-sizing: border-box;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease;
-}
-
-body {
-  margin: 0;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
-}
-
-/* Custom Scrollbar for sleek modern UI */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--bg-primary);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-primary);
+  --mesh-orb-1: rgba(16, 185, 129, 0.16);
+  --mesh-orb-2: rgba(99, 102, 241, 0.14);
+  --mesh-orb-3: rgba(234, 179, 8, 0.09);
 }

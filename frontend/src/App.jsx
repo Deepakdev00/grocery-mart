@@ -10,6 +10,7 @@ import { LoginModal } from './features/auth';
 import { MyOrders } from './features/orders';
 import { AdminLogin, AdminPanel } from './features/admin';
 import { UserProfile, SupportCenter, AboutUs, ContactUs } from './pages';
+import { ScrollVelocityContainer, ScrollVelocityRow } from './components/magicui';
 import {
   AuthProvider,
   useAuth,
@@ -287,6 +288,36 @@ function AppContent() {
               onSelectCategory={(id) => { setSearchQuery(''); scrollToSection(id); }}
             />
             <main className="content-area">
+              {!searchQuery && (
+                <div
+                  className="home-velocity-banner"
+                  style={{
+                    marginBottom: '26px',
+                    borderRadius: '20px',
+                    overflow: 'hidden',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-glass)',
+                    boxShadow: 'var(--shadow-sm)'
+                  }}
+                >
+                  <ScrollVelocityContainer>
+                    <ScrollVelocityRow baseVelocity={16} direction={1}>
+                      <span className="velocity-pill">⚡ 10-MIN EXPRESS DELIVERY</span>
+                      <span className="velocity-pill">🥬 100% FARM FRESH</span>
+                      <span className="velocity-pill">🍎 ORGANIC HARVEST</span>
+                      <span className="velocity-pill">🥛 PURE DAIRY</span>
+                      <span className="velocity-pill">🥑 FRESH AVOCADOS</span>
+                    </ScrollVelocityRow>
+                    <ScrollVelocityRow baseVelocity={16} direction={-1}>
+                      <span className="velocity-pill">🥖 ARTISAN BAKERY</span>
+                      <span className="velocity-pill">🍫 GOURMET SNACKS</span>
+                      <span className="velocity-pill">🛒 BEST VALUE PRICES</span>
+                      <span className="velocity-pill">📦 PACKED WITH CARE</span>
+                      <span className="velocity-pill">✨ 100% QUALITY CHECKED</span>
+                    </ScrollVelocityRow>
+                  </ScrollVelocityContainer>
+                </div>
+              )}
               {productsError && <p role="alert">{productsError}</p>}
               {productsLoading ? (
                 <p role="status">Loading products...</p>

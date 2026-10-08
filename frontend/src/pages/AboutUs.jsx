@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '../context';
+import { SpinningText, ScrollVelocityContainer, ScrollVelocityRow } from '../components/magicui';
 import './AboutUs.css';
 
 const AboutUs = ({ onNavigate, onOpenLogin }) => {
@@ -53,6 +54,7 @@ const AboutUs = ({ onNavigate, onOpenLogin }) => {
             <span className="produce produce-carrot">🥕</span>
             <span className="produce produce-berries">🫐</span>
           </div>
+
           <div className="hero-art-tag hero-art-tag-top">
             <span className="hero-tag-icon">✿</span>
             <span><strong>Fresh picks</strong><small>Everyday favourites</small></span>
@@ -63,17 +65,40 @@ const AboutUs = ({ onNavigate, onOpenLogin }) => {
             <span className="hero-tag-arrow">↗</span>
           </div>
         </div>
+
+        {/* Scroll Down Indicator - Placed cleanly at the end of the Hero Section */}
+        <div className="about-hero-scroll-indicator" aria-label="Scroll down to browse groceries">
+          <SpinningText
+            reverse
+            duration={5}
+            radius={5.5}
+            className="text-4xl"
+            targetId="about-velocity-strip"
+          >
+            learn more • earn more • grow more •
+          </SpinningText>
+        </div>
       </section>
 
-      <section className="about-category-strip" aria-label="Grocery categories">
-        <p>Everything on your list</p>
-        <div>
-          <span>🥬 Fresh produce</span>
-          <span>🥛 Dairy & eggs</span>
-          <span>🥖 Bakery</span>
-          <span>🍪 Snacks</span>
-          <span>🧺 Daily essentials</span>
-        </div>
+      {/* Magic UI Scroll Velocity Marquee with Clean Individual Pills */}
+      <section className="about-velocity-strip" id="about-velocity-strip" aria-label="Grocery categories marquee">
+        <ScrollVelocityContainer>
+          <ScrollVelocityRow baseVelocity={16} direction={1}>
+            <span className="velocity-pill">🥬 Fresh Farm Produce</span>
+            <span className="velocity-pill">🍎 Crisp Apples & Berries</span>
+            <span className="velocity-pill">🥛 Pure Dairy & Eggs</span>
+            <span className="velocity-pill">🥖 Artisan Bakery</span>
+            <span className="velocity-pill">🥑 Hass Avocados</span>
+            <span className="velocity-pill">🍊 Juicy Citrus</span>
+          </ScrollVelocityRow>
+          <ScrollVelocityRow baseVelocity={16} direction={-1}>
+            <span className="velocity-pill">⚡ 10-Minute Express Delivery</span>
+            <span className="velocity-pill">🛒 100% Quality Guaranteed</span>
+            <span className="velocity-pill">🍫 Premium Gourmet Snacks</span>
+            <span className="velocity-pill">🌿 Farm to Table Fresh</span>
+            <span className="velocity-pill">🧺 Daily Essentials</span>
+          </ScrollVelocityRow>
+        </ScrollVelocityContainer>
       </section>
 
       <section className="about-values-section">

@@ -248,17 +248,17 @@ const ForgotPasswordModal = ({ onClose, onBackToLogin }) => {
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', color: '#1c1c1c' }}>
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', color: 'var(--text-heading)' }}>
             {step === 1 && 'Forgot Password'}
             {step === 2 && 'Verify OTP'}
             {step === 3 && 'Reset Password'}
           </h3>
-          <p style={{ color: '#666', fontSize: '13px', margin: 0, lineHeight: 1.4 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: 0, lineHeight: 1.4 }}>
             {step === 1 && 'Enter your email to receive a reset code'}
             {step === 2 && (
               <>
                 Enter the 6-digit code sent to <br />
-                <strong style={{ color: '#1c1c1c' }}>{email}</strong>
+                <strong style={{ color: 'var(--text-heading)' }}>{email}</strong>
               </>
             )}
             {step === 3 && 'Create a new password for your account'}
@@ -282,7 +282,7 @@ const ForgotPasswordModal = ({ onClose, onBackToLogin }) => {
                 width: step === s ? '24px' : '8px',
                 height: '8px',
                 borderRadius: '4px',
-                background: step === s ? '#0aad0a' : step > s ? '#86efac' : '#e2e8f0',
+                background: step === s ? 'var(--color-primary)' : step > s ? '#86efac' : 'var(--border-glass)',
                 transition: 'all 0.3s ease',
               }}
             />
@@ -293,14 +293,15 @@ const ForgotPasswordModal = ({ onClose, onBackToLogin }) => {
         {error && (
           <div
             style={{
-              background: '#fee',
-              color: '#c00',
+              background: 'var(--color-danger-light)',
+              color: 'var(--color-danger)',
               padding: '10px 12px',
               borderRadius: '8px',
               marginBottom: '15px',
               fontSize: '13px',
               textAlign: 'center',
               lineHeight: 1.4,
+              fontWeight: '600'
             }}
           >
             {error}
@@ -322,11 +323,13 @@ const ForgotPasswordModal = ({ onClose, onBackToLogin }) => {
                 disabled={loading}
                 style={{
                   width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
+                  padding: '12px 14px',
+                  border: '1px solid var(--border-glass)',
+                  borderRadius: '12px',
                   outline: 'none',
                   fontSize: '14px',
+                  background: 'var(--bg-input)',
+                  color: 'var(--text-primary)',
                   boxSizing: 'border-box',
                 }}
                 autoFocus
@@ -339,27 +342,18 @@ const ForgotPasswordModal = ({ onClose, onBackToLogin }) => {
               disabled={loading}
               style={{
                 width: '100%',
-                background: '#0aad0a',
-                color: 'white',
-                padding: '13px',
-                border: 'none',
-                borderRadius: '10px',
-                fontWeight: '700',
-                fontSize: '15px',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.7 : 1,
-                marginTop: '5px',
-                transition: 'background 0.2s',
               }}
             >
               {loading ? 'Sending Reset Code...' : 'Send Reset Code'}
             </button>
 
-            <p style={{ fontSize: '12px', color: '#666', marginTop: '20px', textAlign: 'center' }}>
+            <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', marginTop: '20px', textAlign: 'center' }}>
               Remember your password?{' '}
               <span
                 style={{
-                  color: '#0aad0a',
+                  color: 'var(--color-primary)',
                   fontWeight: 'bold',
                   cursor: 'pointer',
                   textDecoration: 'underline',
@@ -404,11 +398,11 @@ const ForgotPasswordModal = ({ onClose, onBackToLogin }) => {
                     textAlign: 'center',
                     fontSize: '20px',
                     fontWeight: '700',
-                    border: digit ? '2px solid #0aad0a' : '1px solid #ddd',
-                    borderRadius: '8px',
+                    border: digit ? '2px solid var(--color-primary)' : '1px solid var(--border-glass)',
+                    borderRadius: '12px',
                     outline: 'none',
-                    background: digit ? '#f0fdf4' : '#fafafa',
-                    color: '#1c1c1c',
+                    background: digit ? 'var(--color-primary-light)' : 'var(--bg-input)',
+                    color: 'var(--text-primary)',
                     boxSizing: 'border-box',
                   }}
                 />
@@ -425,9 +419,9 @@ const ForgotPasswordModal = ({ onClose, onBackToLogin }) => {
                 fontSize: '13px',
               }}
             >
-              <span style={{ color: '#666' }}>
+              <span style={{ color: 'var(--text-muted)' }}>
                 Expires in:{' '}
-                <strong style={{ color: otpTimer > 0 ? '#0aad0a' : '#ef4444' }}>
+                <strong style={{ color: otpTimer > 0 ? 'var(--color-primary)' : 'var(--color-danger)' }}>
                   {formatTimer(otpTimer)}
                 </strong>
               </span>
@@ -439,7 +433,7 @@ const ForgotPasswordModal = ({ onClose, onBackToLogin }) => {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: otpTimer > 0 ? '#aaa' : '#0aad0a',
+                  color: otpTimer > 0 ? 'var(--text-muted)' : 'var(--color-primary)',
                   fontWeight: 'bold',
                   cursor: otpTimer > 0 || loading ? 'not-allowed' : 'pointer',
                   textDecoration: otpTimer === 0 ? 'underline' : 'none',
@@ -457,16 +451,8 @@ const ForgotPasswordModal = ({ onClose, onBackToLogin }) => {
               disabled={loading}
               style={{
                 width: '100%',
-                background: '#0aad0a',
-                color: 'white',
-                padding: '13px',
-                border: 'none',
-                borderRadius: '10px',
-                fontWeight: '700',
-                fontSize: '15px',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.7 : 1,
-                transition: 'background 0.2s',
               }}
             >
               {loading ? 'Verifying...' : 'Verify'}
@@ -477,12 +463,12 @@ const ForgotPasswordModal = ({ onClose, onBackToLogin }) => {
                 display: 'flex',
                 justifyContent: 'space-between',
                 marginTop: '20px',
-                fontSize: '12px',
+                fontSize: '12.5px',
               }}
             >
               <span
                 style={{
-                  color: '#666',
+                  color: 'var(--text-muted)',
                   cursor: 'pointer',
                   textDecoration: 'underline',
                 }}
@@ -496,7 +482,7 @@ const ForgotPasswordModal = ({ onClose, onBackToLogin }) => {
 
               <span
                 style={{
-                  color: '#0aad0a',
+                  color: 'var(--color-primary)',
                   fontWeight: 'bold',
                   cursor: 'pointer',
                   textDecoration: 'underline',
@@ -528,11 +514,13 @@ const ForgotPasswordModal = ({ onClose, onBackToLogin }) => {
                 disabled={loading}
                 style={{
                   width: '100%',
-                  padding: '12px 40px 12px 12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
+                  padding: '12px 40px 12px 14px',
+                  border: '1px solid var(--border-glass)',
+                  borderRadius: '12px',
                   outline: 'none',
                   fontSize: '14px',
+                  background: 'var(--bg-input)',
+                  color: 'var(--text-primary)',
                   boxSizing: 'border-box',
                 }}
                 autoFocus
@@ -549,7 +537,7 @@ const ForgotPasswordModal = ({ onClose, onBackToLogin }) => {
                   border: 'none',
                   cursor: 'pointer',
                   fontSize: '13px',
-                  color: '#666',
+                  color: 'var(--text-muted)',
                   padding: '4px 6px',
                   fontWeight: '600',
                 }}
@@ -570,7 +558,7 @@ const ForgotPasswordModal = ({ onClose, onBackToLogin }) => {
                     marginBottom: '4px',
                   }}
                 >
-                  <span style={{ fontSize: '11px', color: '#666' }}>Password Strength:</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Password Strength:</span>
                   <span
                     style={{
                       fontSize: '11px',
@@ -585,7 +573,7 @@ const ForgotPasswordModal = ({ onClose, onBackToLogin }) => {
                   style={{
                     width: '100%',
                     height: '5px',
-                    background: '#e2e8f0',
+                    background: 'var(--border-glass)',
                     borderRadius: '3px',
                     overflow: 'hidden',
                   }}
@@ -616,11 +604,13 @@ const ForgotPasswordModal = ({ onClose, onBackToLogin }) => {
                 disabled={loading}
                 style={{
                   width: '100%',
-                  padding: '12px 40px 12px 12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
+                  padding: '12px 40px 12px 14px',
+                  border: '1px solid var(--border-glass)',
+                  borderRadius: '12px',
                   outline: 'none',
                   fontSize: '14px',
+                  background: 'var(--bg-input)',
+                  color: 'var(--text-primary)',
                   boxSizing: 'border-box',
                 }}
               />
@@ -636,7 +626,7 @@ const ForgotPasswordModal = ({ onClose, onBackToLogin }) => {
                   border: 'none',
                   cursor: 'pointer',
                   fontSize: '13px',
-                  color: '#666',
+                  color: 'var(--text-muted)',
                   padding: '4px 6px',
                   fontWeight: '600',
                 }}
@@ -652,26 +642,17 @@ const ForgotPasswordModal = ({ onClose, onBackToLogin }) => {
               disabled={loading}
               style={{
                 width: '100%',
-                background: '#0aad0a',
-                color: 'white',
-                padding: '13px',
-                border: 'none',
-                borderRadius: '10px',
-                fontWeight: '700',
-                fontSize: '15px',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.7 : 1,
-                marginTop: '5px',
-                transition: 'background 0.2s',
               }}
             >
               {loading ? 'Resetting Password...' : 'Reset Password'}
             </button>
 
-            <p style={{ fontSize: '12px', color: '#666', marginTop: '20px', textAlign: 'center' }}>
+            <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', marginTop: '20px', textAlign: 'center' }}>
               <span
                 style={{
-                  color: '#0aad0a',
+                  color: 'var(--color-primary)',
                   fontWeight: 'bold',
                   cursor: 'pointer',
                   textDecoration: 'underline',

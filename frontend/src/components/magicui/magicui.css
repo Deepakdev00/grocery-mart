@@ -1,0 +1,337 @@
+/* ==========================================================================
+   MAGIC UI COMPONENTS CSS FOR GROCERY MART
+   DiaTextReveal, ScrollVelocity, SpinningText, ShimmerButton
+   ========================================================================== */
+
+/* ----------------------------------------------------
+   1. DIA TEXT REVEAL (Logo & Highlights)
+   ---------------------------------------------------- */
+.dia-text-reveal {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  user-select: none;
+  cursor: pointer;
+}
+
+.dia-letter {
+  display: inline-block;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s ease, filter 0.3s ease;
+  animation: diaReveal 3s infinite alternate ease-in-out;
+}
+
+.dia-letter:hover {
+  transform: translateY(-4px) scale(1.15);
+  filter: drop-shadow(0 0 12px currentColor);
+}
+
+@keyframes diaReveal {
+  0% {
+    filter: drop-shadow(0 0 2px transparent);
+  }
+  50% {
+    filter: drop-shadow(0 0 8px currentColor);
+  }
+  100% {
+    filter: drop-shadow(0 0 14px currentColor);
+  }
+}
+
+/* ----------------------------------------------------
+   2. SCROLL BASED VELOCITY (Products Velocity Marquee)
+   ---------------------------------------------------- */
+.scroll-velocity-container {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 18px 0;
+  user-select: none;
+  gap: 12px;
+}
+
+.scroll-velocity-row {
+  display: flex;
+  white-space: nowrap;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  padding: 4px 0;
+}
+
+.scroll-velocity-track {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 14px;
+  will-change: transform;
+}
+
+.scroll-velocity-track.direction-forward {
+  animation: velocityScrollForward 36s linear infinite;
+}
+
+.scroll-velocity-track.direction-reverse {
+  animation: velocityScrollReverse 36s linear infinite;
+}
+
+.scroll-velocity-container:hover .scroll-velocity-track {
+  animation-play-state: paused;
+}
+
+@keyframes velocityScrollForward {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes velocityScrollReverse {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0%);
+  }
+}
+
+.scroll-velocity-fade-left,
+.scroll-velocity-fade-right {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 70px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.scroll-velocity-fade-left {
+  left: 0;
+  background: linear-gradient(to right, var(--bg-card), transparent);
+}
+
+.scroll-velocity-fade-right {
+  right: 0;
+  background: linear-gradient(to left, var(--bg-card), transparent);
+}
+
+.velocity-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Modern Glass Velocity Pill Chip */
+.velocity-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 20px;
+  border-radius: 9999px;
+  background: var(--bg-input);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glass);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  font-size: clamp(13px, 1.4vw, 15px);
+  font-weight: 750;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.velocity-pill:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+  background: var(--bg-card);
+}
+
+@media (max-width: 600px) {
+  .scroll-velocity-container {
+    padding: 12px 0;
+    gap: 8px;
+  }
+  .velocity-pill {
+    padding: 7px 14px;
+    font-size: 12.5px;
+  }
+}
+
+/* ----------------------------------------------------
+   3. SPINNING TEXT (with Down Arrow & Scroll)
+   ---------------------------------------------------- */
+.spinning-text-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.spinning-text-wrapper:hover {
+  transform: scale(1.08);
+}
+
+.spinning-text-svg {
+  animation: spinTextRotation 12s linear infinite;
+  transform-origin: center center;
+}
+
+.spinning-text-svg.reverse {
+  animation-direction: reverse;
+}
+
+@keyframes spinTextRotation {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinning-text-path {
+  fill: none;
+}
+
+.spinning-text-content {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  transition: fill 0.2s;
+}
+
+.spinning-text-wrapper:hover .spinning-text-content {
+  fill: var(--color-primary);
+}
+
+.spinning-text-center-btn {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1.5px solid var(--border-glass);
+  box-shadow: var(--shadow-md), 0 0 15px rgba(16, 185, 129, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 2;
+}
+
+.spinning-text-wrapper:hover .spinning-text-center-btn {
+  background: var(--color-primary);
+  color: white;
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.5);
+  transform: translateY(2px);
+}
+
+.spinning-text-arrow {
+  animation: arrowBounce 1.8s ease-in-out infinite;
+}
+
+@keyframes arrowBounce {
+  0%, 100% {
+    transform: translateY(-2px);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+
+/* ----------------------------------------------------
+   4. SHIMMER BUTTON (Magic UI Add to Cart)
+   ---------------------------------------------------- */
+.shimmer-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 12px;
+  padding: 2px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  user-select: none;
+  text-decoration: none;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+}
+
+.shimmer-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(16, 185, 129, 0.45);
+}
+
+.shimmer-button:active {
+  transform: scale(0.93) !important;
+}
+
+/* Animated Shimmer Conic Gradient Aura */
+.shimmer-button-glow {
+  position: absolute;
+  inset: -100%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(16, 185, 129, 0.8) 60deg,
+    #34d399 120deg,
+    rgba(16, 185, 129, 0.8) 180deg,
+    transparent 240deg
+  );
+  animation: shimmerRotate 3s linear infinite;
+  z-index: 1;
+}
+
+@keyframes shimmerRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Inner Pill Surface */
+.shimmer-button-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 8px 18px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(5, 150, 105, 0.95) 0%, rgba(16, 185, 129, 0.95) 100%);
+  color: white;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(8px);
+}
+
+.shimmer-button.added .shimmer-button-inner {
+  background: linear-gradient(135deg, #047857 0%, #059669 100%);
+}

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth, useTheme, useToast } from '../../context';
 import { profileAPI } from '../../services/api';
+import { DiaTextReveal } from '../magicui';
 
 const Navbar = ({
   cartCount,
@@ -58,7 +59,12 @@ const Navbar = ({
           onClick={() => handleNav(isAuthenticated ? 'home' : 'about')}
           aria-label="Go to Grocery Mart"
         >
-          <span className="logo-black">Grocery</span><span className="logo-green">Mart</span>
+          <span style={{ fontSize: '24px', marginRight: '6px' }}>🛒</span>
+          <DiaTextReveal
+            className="logo-text"
+            colors={["#22d3ee", "#818cf8", "#f472b6", "#34d399"]}
+            text="Grocery Mart"
+          />
         </button>
       </div>
 
