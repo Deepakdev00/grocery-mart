@@ -1,8 +1,7 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
-const { requireAdmin: adminAuthMiddleware } = require('../middleware/jwtAuth');
+const prisma = require('../config/prisma');
+const { requireAdmin: adminAuthMiddleware } = require('../middleware/auth.middleware');
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 // POST /api/products - Create product (admin only)
@@ -69,6 +68,20 @@ router.get('/', async (req, res) => {
     res.json({ products });
   } catch (error) {
     console.error('Get products error:', error);
+    res.status(500).json({ message: 'Server error fetching products' });
+  }
+});
+
+// GET /api/products/admin/all - Get all products for admin (including out of stock)
+router.get('/admin/all', adminAuthMiddleware, async (req, res) => {
+  try {
+    const products = await prisma.product.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({ products });
+  } catch (error) {
+    console.error('Get all products error:', error);
     res.status(500).json({ message: 'Server error fetching products' });
   }
 });
@@ -166,20 +179,6 @@ router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Delete product error:', error);
     res.status(500).json({ message: 'Server error deleting product' });
-  }
-});
-
-// GET /api/products/admin/all - Get all products for admin (including out of stock)
-router.get('/admin/all', adminAuthMiddleware, async (req, res) => {
-  try {
-    const products = await prisma.product.findMany({
-      orderBy: { createdAt: 'desc' }
-    });
-
-    res.json({ products });
-  } catch (error) {
-    console.error('Get all products error:', error);
-    res.status(500).json({ message: 'Server error fetching products' });
   }
 });
 

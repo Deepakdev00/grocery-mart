@@ -1,21 +1,22 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
-const JWT_SECRET = require('../config/auth');
+const prisma = require('../config/prisma');
+const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/jwt');
 const { setAdminCookie, clearAdminCookie } = require('../middleware/cookies');
-const { requireAdmin } = require('../middleware/jwtAuth');
-
-const prisma = new PrismaClient();
+const { requireAdmin } = require('../middleware/auth.middleware');
+const { requireRoles } = require('../middleware/role.middleware');
+const { rateLimits } = require('../middleware/auth-rate-limit.middleware');
+const { validateBody, schemas } = require('../middleware/validation.middleware');
 const router = express.Router();
 
 const generateToken = (adminId) => {
-  return jwt.sign({ adminId }, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ adminId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 };
 
 // POST /api/admin/signup
 // Create initial admin account
-router.post('/signup', async (req, res) => {
+router.post('/signup', validateBody(schemas.signup), rateLimits.adminSignupByIp, async (req, res) => {
   try {
     const creationSecret = process.env.ADMIN_CREATION_SECRET;
     if (!creationSecret || req.get('x-admin-creation-secret') !== creationSecret) {
@@ -85,7 +86,12 @@ router.post('/signup', async (req, res) => {
 
 // POST /api/admin/login
 // Admin login with session tracking
-router.post('/login', async (req, res) => {
+router.post(
+  '/login',
+  validateBody(schemas.adminLogin),
+  rateLimits.adminLoginByIp,
+  rateLimits.adminLoginByIdentity,
+  async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -144,7 +150,7 @@ router.post('/login', async (req, res) => {
 
 // GET /api/admin/me
 // Get current admin info
-router.get('/me', requireAdmin, async (req, res) => {
+router.get('/me', requireAdmin, requireRoles('admin', 'super_admin'), async (req, res) => {
   try {
     const admin = await prisma.admin.findUnique({
       where: { id: req.adminId }
@@ -175,7 +181,7 @@ router.get('/me', requireAdmin, async (req, res) => {
 
 // GET /api/admin/logout
 // Logout and deactivate session
-router.post('/logout', requireAdmin, async (req, res) => {
+router.post('/logout', requireAdmin, requireRoles('admin', 'super_admin'), async (req, res) => {
   try {
     await prisma.adminSession.updateMany({
       where: { token: req.token },

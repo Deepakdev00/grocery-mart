@@ -50,19 +50,16 @@ const Navbar = ({
 
   return (
     <header className="navbar">
-      {/* Brand Logo & Location */}
+      {/* Brand */}
       <div className="nav-brand-section">
-        <div
+        <button
+          type="button"
           className="logo-section"
           onClick={() => handleNav(isAuthenticated ? 'home' : 'about')}
-          style={{ cursor: 'pointer' }}
+          aria-label="Go to Grocery Mart"
         >
           <span className="logo-black">Grocery</span><span className="logo-green">Mart</span>
-        </div>
-        <div className="location-section">
-          <div className="delivery-title">⚡ 10 Min Delivery</div>
-          <div className="delivery-loc">Surat, Gujarat</div>
-        </div>
+        </button>
       </div>
 
       {/* Main Nav Links: Home (if logged in), About Us, Contact Us */}

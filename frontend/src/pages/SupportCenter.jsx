@@ -38,10 +38,7 @@ const SupportCenter = ({ onBack }) => {
   const createTicket = async (e) => {
     e.preventDefault();
     if (!title || !description) {
-      addToast({
-        message: 'Please fill in all fields',
-        type: 'error',
-      });
+      addToast('Please fill in all fields', 'error');
       return;
     }
 

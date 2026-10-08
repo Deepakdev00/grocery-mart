@@ -1,8 +1,7 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
-const { requireUser: authMiddleware } = require('../middleware/jwtAuth');
+const prisma = require('../config/prisma');
+const { requireUser: authMiddleware } = require('../middleware/auth.middleware');
 const router = express.Router();
-const prisma = new PrismaClient();
 
 async function getOrCreateCart(userId) {
   const userExists = await prisma.user.findUnique({ where: { id: userId } });

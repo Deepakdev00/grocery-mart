@@ -8,188 +8,111 @@ const AboutUs = ({ onNavigate, onOpenLogin }) => {
   const handleShopClick = () => {
     if (isAuthenticated) {
       onNavigate('home');
-    } else if (onOpenLogin) {
-      onOpenLogin(false);
     } else {
-      onNavigate('about');
+      onOpenLogin?.(false);
     }
   };
 
   return (
-    <div className="about-page">
-      {/* Hero Section */}
+    <main className="about-page">
       <section className="about-hero">
-        <div className="about-hero-badge">🌿 100% Farm Fresh & Pure</div>
-        <h1 className="about-hero-title">
-          Delivering Freshness to Your Doorstep in <span className="highlight-green">10 Minutes</span>
-        </h1>
-        <p className="about-hero-subtitle">
-          Grocery Mart is your trusted neighborhood e-grocery supermarket. We connect local farmers directly with your kitchen to bring you the highest quality vegetables, fruits, dairy, and daily essentials at unbeatable prices.
-        </p>
-        <div className="about-hero-actions">
-          <button className="about-btn-primary" onClick={handleShopClick}>
-            🛒 Start Shopping Now
-          </button>
-          <button className="about-btn-secondary" onClick={() => onNavigate('contact')}>
-            💬 Contact Us
-          </button>
-        </div>
-      </section>
-
-      {/* Stats Counter Section */}
-      <section className="about-stats-section">
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-number">10 min</div>
-            <div className="stat-label">Lightning Fast Delivery</div>
+        <div className="about-hero-copy">
+          <div className="about-hero-badge"><span /> Everyday groceries, made easy</div>
+          <h1 className="about-hero-title">
+            A little fresher.<br />
+            <span className="highlight-green">A lot more convenient.</span>
+          </h1>
+          <p className="about-hero-subtitle">
+            Your neighborhood grocery list, all in one place. Find everyday essentials,
+            build your basket, and keep your shopping simple.
+          </p>
+          <div className="about-hero-actions">
+            <button className="about-btn-primary" onClick={handleShopClick}>
+              Browse groceries <span aria-hidden="true">→</span>
+            </button>
+            <button className="about-btn-secondary" onClick={() => onNavigate('contact')}>
+              Talk to our team
+            </button>
           </div>
-          <div className="stat-card">
-            <div className="stat-number">1M+</div>
-            <div className="stat-label">Happy Families Served</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">5,000+</div>
-            <div className="stat-label">Fresh & Handpicked Items</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">99.8%</div>
-            <div className="stat-label">On-Time Delivery Rate</div>
+          <div className="about-hero-note">
+            <span className="about-note-check">✓</span>
+            Your cart, wishlist and orders stay with your account
           </div>
         </div>
-      </section>
 
-      {/* Our Mission & Story */}
-      <section className="about-story-section">
-        <div className="story-container">
-          <div className="story-image-card">
-            <div className="story-emoji">🥬🍎🥦🥛</div>
-            <div className="story-floating-badge">
-              <span>🌟</span> Direct from Local Certified Farmers
-            </div>
+        <div className="about-hero-art" aria-label="Fresh grocery selection illustration">
+          <div className="hero-art-orbit hero-art-orbit-one" />
+          <div className="hero-art-orbit hero-art-orbit-two" />
+          <div className="hero-art-leaf hero-art-leaf-one">✦</div>
+          <div className="hero-art-leaf hero-art-leaf-two">✦</div>
+          <div className="hero-art-produce">
+            <span className="produce produce-tomato">🍅</span>
+            <span className="produce produce-avocado">🥑</span>
+            <span className="produce produce-orange">🍊</span>
+            <span className="produce produce-lettuce">🥬</span>
+            <span className="produce produce-carrot">🥕</span>
+            <span className="produce produce-berries">🫐</span>
           </div>
-          <div className="story-text">
-            <h2>Our Story & Vision</h2>
-            <p>
-              Founded with a simple mission: <strong>Make healthy, premium quality groceries accessible and affordable for everyone.</strong> We realized that grocery shopping often involves standing in long billing queues, dealing with stale produce, or waiting days for delivery.
-            </p>
-            <p>
-              With our state-of-the-art dark stores located right across your neighborhood, temperature-controlled delivery vans, and smart inventory management, we ensure your daily essentials arrive crisp, cool, and super fresh in under 10 minutes.
-            </p>
-            <div className="story-points">
-              <div className="point-item">
-                <span className="point-icon">🌱</span>
-                <div>
-                  <strong>Zero Preservatives & Chemical-Free</strong>
-                  <p>Strict quality checks at farm gates before dispatch.</p>
-                </div>
-              </div>
-              <div className="point-item">
-                <span className="point-icon">⚡</span>
-                <div>
-                  <strong>Hyperlocal Instant Delivery</strong>
-                  <p>Smart localized hubs for 10-minute order fulfillment.</p>
-                </div>
-              </div>
-            </div>
+          <div className="hero-art-tag hero-art-tag-top">
+            <span className="hero-tag-icon">✿</span>
+            <span><strong>Fresh picks</strong><small>Everyday favourites</small></span>
+          </div>
+          <div className="hero-art-tag hero-art-tag-bottom">
+            <span className="hero-tag-basket">▤</span>
+            <span><strong>Your basket</strong><small>Ready when you are</small></span>
+            <span className="hero-tag-arrow">↗</span>
           </div>
         </div>
       </section>
 
-      {/* Core Values / Why Choose Us */}
+      <section className="about-category-strip" aria-label="Grocery categories">
+        <p>Everything on your list</p>
+        <div>
+          <span>🥬 Fresh produce</span>
+          <span>🥛 Dairy & eggs</span>
+          <span>🥖 Bakery</span>
+          <span>🍪 Snacks</span>
+          <span>🧺 Daily essentials</span>
+        </div>
+      </section>
+
       <section className="about-values-section">
-        <h2 className="section-heading">Why Millions Choose Grocery Mart</h2>
-        <p className="section-subheading">We are committed to perfection in every single order.</p>
+        <div className="about-section-eyebrow">A better everyday routine</div>
+        <h2 className="section-heading">Shopping that feels simple.</h2>
+        <p className="section-subheading">
+          The essentials you need, with a smoother way to find and manage them.
+        </p>
 
         <div className="values-grid">
-          <div className="value-card">
-            <div className="value-icon">⚡</div>
-            <h3>10-Minute Delivery</h3>
-            <p>From checkout to your doorbell in minutes. No more waiting, no more delays.</p>
-          </div>
-
-          <div className="value-card">
-            <div className="value-icon">🥦</div>
-            <h3>Farm Fresh Quality</h3>
-            <p>Handpicked daily fruits and vegetables sourced directly from verified organic farms.</p>
-          </div>
-
-          <div className="value-card">
-            <div className="value-icon">🏷️</div>
-            <h3>Best Market Prices</h3>
-            <p>Direct farmer sourcing eliminates middlemen so you get wholesale prices on top brands.</p>
-          </div>
-
-          <div className="value-card">
-            <div className="value-icon">🔄</div>
-            <h3>Instant No-Questions Refund</h3>
-            <p>Not satisfied with an item? Instant refund or replacement with just 1 tap.</p>
-          </div>
-
-          <div className="value-card">
-            <div className="value-icon">🛡️</div>
-            <h3>100% Safe & Hygienic</h3>
-            <p>Sanitized packaging, contactless drop-offs, and temperature-controlled storage.</p>
-          </div>
-
-          <div className="value-card">
-            <div className="value-icon">🎧</div>
-            <h3>24/7 Dedicated Support</h3>
-            <p>Our friendly customer care team is always here to resolve any questions or issues instantly.</p>
-          </div>
+          <article className="value-card">
+            <div className="value-icon value-icon-mint">⌕</div>
+            <h3>Find your favourites</h3>
+            <p>Browse by category or search the catalog to quickly find what you need.</p>
+          </article>
+          <article className="value-card">
+            <div className="value-icon value-icon-lilac">♡</div>
+            <h3>Keep a wishlist</h3>
+            <p>Save products to your account and come back to them any time.</p>
+          </article>
+          <article className="value-card">
+            <div className="value-icon value-icon-peach">▣</div>
+            <h3>Stay in the loop</h3>
+            <p>Review your basket and find your previous orders from one place.</p>
+          </article>
         </div>
       </section>
 
-      {/* Customer Testimonials */}
-      <section className="about-reviews-section">
-        <h2 className="section-heading">Loved by Over 1 Million Customers</h2>
-        <div className="reviews-grid">
-          <div className="review-card">
-            <div className="review-stars">⭐⭐⭐⭐⭐</div>
-            <p className="review-comment">"The vegetables are always fresher than my local market and they literally arrive in 8 minutes flat! Grocery Mart has completely changed our weekly shopping routine."</p>
-            <div className="review-author">
-              <div className="author-avatar">👩</div>
-              <div>
-                <strong>Priya Sharma</strong>
-                <small>Surat, Gujarat</small>
-              </div>
-            </div>
-          </div>
-
-          <div className="review-card">
-            <div className="review-stars">⭐⭐⭐⭐⭐</div>
-            <p className="review-comment">"Super intuitive app, love the dark mode theme, and the delivery boys are very courteous. Highly recommended for daily milk, fruits, and snacks!"</p>
-            <div className="review-author">
-              <div className="author-avatar">👨</div>
-              <div>
-                <strong>Rahul Mehta</strong>
-                <small>Ahmedabad, Gujarat</small>
-              </div>
-            </div>
-          </div>
-
-          <div className="review-card">
-            <div className="review-stars">⭐⭐⭐⭐⭐</div>
-            <p className="review-comment">"Customer support resolved my wrong item complaint in under 2 minutes with instant wallet refund. Customer obsession at its finest."</p>
-            <div className="review-author">
-              <div className="author-avatar">👩</div>
-              <div>
-                <strong>Sneha Patel</strong>
-                <small>Vadodara, Gujarat</small>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Call to Action Banner */}
       <section className="about-cta-banner">
-        <h2>Experience Superfast Grocery Shopping Today</h2>
-        <p>Order fresh fruits, vegetables, dairy, snacks & household essentials right now.</p>
+        <div>
+          <span className="about-cta-eyebrow">Your next shop starts here</span>
+          <h2>Make room for a simpler grocery run.</h2>
+          <p>Sign in to browse the live catalog and build your basket.</p>
+        </div>
         <button className="cta-shop-btn" onClick={handleShopClick}>
-          🚀 Explore Store & Order Now
+          Get started <span aria-hidden="true">→</span>
         </button>
       </section>
-    </div>
+    </main>
   );
 };
 

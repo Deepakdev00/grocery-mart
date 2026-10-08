@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import AdminNavbar from './AdminNavbar';
 import AdminSidebar from './AdminSidebar';
 import AdminUserManagement from './AdminUserManagement';
-import { useToast } from '../../context';
+import { useAdmin, useToast } from '../../context';
 import { adminApiRequest } from '../../services/api';
 import './AdminPanel.css';
 
@@ -17,28 +17,17 @@ const AdminPanel = ({ onBack }) => {
     totalUsers: 0,
   });
   const [orders, setOrders] = useState([]);
-  const [users, setUsers] = useState([]);
   const [sessions, setSessions] = useState([]);
-  const [products, setProducts] = useState([]);
   const [tickets, setTickets] = useState([]);
   const [selectedDay, setSelectedDay] = useState(null);
   const [dayDetails, setDayDetails] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // New Product Form
-  const [productForm, setProductForm] = useState({
-    name: '',
-    price: '',
-    category: 'vegetables',
-    imageUrl: '',
-    description: '',
-  });
-  const [showAddProduct, setShowAddProduct] = useState(false);
-
   // Support Reply
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [adminReply, setAdminReply] = useState('');
+  const { adminUser } = useAdmin();
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -57,12 +46,8 @@ const AdminPanel = ({ onBack }) => {
         ]);
       } else if (activeTab === 'orders') {
         await fetchOrders();
-      } else if (activeTab === 'users') {
-        await fetchUsers();
       } else if (activeTab === 'sessions') {
         await fetchSessions();
-      } else if (activeTab === 'products') {
-        await fetchProducts();
       } else if (activeTab === 'support') {
         await fetchTickets();
       }
@@ -101,60 +86,14 @@ const AdminPanel = ({ onBack }) => {
     setOrders(data.orders);
   };
 
-  const fetchUsers = async () => {
-    const data = await adminApiRequest('/admin/dashboard/users');
-    setUsers(data.users);
-  };
-
   const fetchSessions = async () => {
     const data = await adminApiRequest('/admin/dashboard/sessions');
     setSessions(data.sessions);
   };
 
-  const fetchProducts = async () => {
-    const data = await adminApiRequest('/products/admin/all');
-    setProducts(data.products);
-  };
-
   const fetchTickets = async () => {
     const data = await adminApiRequest('/support/dashboard');
     setTickets(data.tickets);
-  };
-
-  const addProduct = async (e) => {
-    e.preventDefault();
-    if (!productForm.name || !productForm.price || !productForm.imageUrl) {
-      addToast({ message: 'Please fill in all required fields', type: 'error' });
-      return;
-    }
-
-    try {
-      await adminApiRequest('/products', { method: 'POST', body: productForm });
-      addToast({ message: 'Product added successfully', type: 'success' });
-      setProductForm({
-        name: '',
-        price: '',
-        category: 'vegetables',
-        imageUrl: '',
-        description: '',
-      });
-      setShowAddProduct(false);
-      await fetchProducts();
-    } catch (error) {
-      addToast({ message: error.message || 'Failed to add product', type: 'error' });
-    }
-  };
-
-  const deleteProduct = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this product?')) return;
-
-    try {
-      await adminApiRequest(`/products/${encodeURIComponent(id)}`, { method: 'DELETE' });
-      addToast({ message: 'Product deleted successfully', type: 'success' });
-      await fetchProducts();
-    } catch (error) {
-      addToast({ message: error.message || 'Failed to delete product', type: 'error' });
-    }
   };
 
   const updateTicketStatus = async (ticketId, status) => {
@@ -168,7 +107,7 @@ const AdminPanel = ({ onBack }) => {
         setSelectedTicket({ ...selectedTicket, status });
       }
     } catch (error) {
-      addToast({ message: error.message || 'Failed to update ticket', type: 'error' });
+      addToast(error.message || 'Failed to update ticket', 'error');
     }
   };
 
@@ -183,9 +122,9 @@ const AdminPanel = ({ onBack }) => {
 
       setAdminReply('');
       await fetchTickets();
-      addToast({ message: 'Reply sent successfully', type: 'success' });
+      addToast('Reply sent successfully', 'success');
     } catch (error) {
-      addToast({ message: error.message || 'Failed to send reply', type: 'error' });
+      addToast(error.message || 'Failed to send reply', 'error');
     }
   };
 
@@ -207,6 +146,25 @@ const AdminPanel = ({ onBack }) => {
 
   const renderDashboard = () => (
     <div className="admin-dashboard">
+      <header
+        className="admin-welcome-banner"
+        onMouseMove={(event) => {
+          const bounds = event.currentTarget.getBoundingClientRect();
+          event.currentTarget.style.setProperty('--pointer-x', `${event.clientX - bounds.left}px`);
+          event.currentTarget.style.setProperty('--pointer-y', `${event.clientY - bounds.top}px`);
+        }}
+      >
+        <div>
+          <span className="admin-welcome-eyebrow">
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          </span>
+          <h1>Good to see you, {adminUser?.username || 'Admin'}</h1>
+          <p>Your store overview, based on the latest saved order and account data.</p>
+        </div>
+        <button onClick={() => setActiveTab('orders')}>
+          View orders <span aria-hidden="true">→</span>
+        </button>
+      </header>
       {error && (
         <div style={{ background: '#fee', color: '#c00', padding: '12px 16px', borderRadius: '8px', border: '1px solid #fcc' }}>
           ⚠️ {error}
@@ -256,9 +214,21 @@ const AdminPanel = ({ onBack }) => {
 
       <div className="charts-section">
         <div className="chart-container">
-          <h2>Daily Orders (Last 30 Days)</h2>
+          <div className="chart-heading">
+            <div>
+              <span>ORDER ACTIVITY</span>
+              <h2>Daily orders <small>Last 30 days</small></h2>
+            </div>
+            <span className="chart-live-badge"><i /> Live data</span>
+          </div>
           {loading ? (
-            <p>Loading chart data...</p>
+            <p className="admin-loading-message">Loading chart data...</p>
+          ) : dailyOrders.length === 0 ? (
+            <div className="admin-empty-chart">
+              <span>▥</span>
+              <strong>No order activity yet</strong>
+              <p>Daily orders will appear here when customers place orders.</p>
+            </div>
           ) : (
             <div className="bar-chart">
               {dailyOrders.map((day, index) => (
@@ -283,8 +253,32 @@ const AdminPanel = ({ onBack }) => {
           )}
         </div>
 
+        <aside className="dashboard-summary-card">
+          <div className="summary-card-heading">
+            <span className="summary-card-icon">✦</span>
+            <span>Store snapshot</span>
+          </div>
+          <p className="summary-card-intro">A quick look at today, from your live store data.</p>
+          <div className="summary-highlight">
+            <span>Orders today</span>
+            <strong>{stats.todayOrders.toLocaleString()}</strong>
+            <small>Recorded for today</small>
+          </div>
+          <div className="summary-detail">
+            <span>Average order value</span>
+            <strong>₹{stats.avgOrderValue.toLocaleString()}</strong>
+          </div>
+          <div className="summary-detail">
+            <span>Customers</span>
+            <strong>{stats.totalUsers.toLocaleString()}</strong>
+          </div>
+          <button className="summary-link" onClick={() => setActiveTab('orders')}>
+            View orders <span aria-hidden="true">→</span>
+          </button>
+        </aside>
+
         {dayDetails && (
-          <div className="details-panel">
+          <div className="details-panel selected-day-details">
             <h2>📅 {dayDetails.date}</h2>
             <div className="details-stats">
               <div className="detail-stat">
@@ -303,141 +297,6 @@ const AdminPanel = ({ onBack }) => {
           </div>
         )}
       </div>
-    </div>
-  );
-
-  const renderProducts = () => (
-    <div className="admin-content-section">
-      <div className="section-header">
-        <h2>🛍️ Products Management</h2>
-        <button
-          className="add-btn"
-          onClick={() => setShowAddProduct(!showAddProduct)}
-        >
-          {showAddProduct ? 'Cancel' : '+ Add Product'}
-        </button>
-      </div>
-
-      {showAddProduct && (
-        <div className="add-product-form">
-          <h3>Add New Product</h3>
-          <form onSubmit={addProduct}>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Product Name</label>
-                <input
-                  type="text"
-                  value={productForm.name}
-                  onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                  placeholder="e.g. Fresh Tomatoes"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Price (₹)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={productForm.price}
-                  onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
-                  placeholder="e.g. 40"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label>Category</label>
-                <select
-                  value={productForm.category}
-                  onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                >
-                  <option value="vegetables">Vegetables & Fruits</option>
-                  <option value="dairy">Dairy & Eggs</option>
-                  <option value="bakery">Bakery & Snacks</option>
-                  <option value="beverages">Beverages</option>
-                  <option value="staples">Staples & Grains</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label>Product Image URL</label>
-                <input
-                  type="url"
-                  value={productForm.imageUrl}
-                  onChange={(e) => setProductForm({ ...productForm, imageUrl: e.target.value })}
-                  placeholder="https://example.com/image.jpg"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>Description (Optional)</label>
-              <textarea
-                value={productForm.description}
-                onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                placeholder="Product description..."
-                rows="3"
-              />
-            </div>
-
-            <button type="submit" className="save-btn">Save Product</button>
-          </form>
-        </div>
-      )}
-
-      {loading ? (
-        <p>Loading products...</p>
-      ) : products.length === 0 ? (
-        <p>No products added yet</p>
-      ) : (
-        <div className="products-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Image</th>
-                <th>Name</th>
-                <th>Category</th>
-                <th>Price</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((product) => (
-                <tr key={product.id}>
-                  <td>
-                    <img
-                      src={product.imageUrl}
-                      alt={product.name}
-                      style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }}
-                    />
-                  </td>
-                  <td><strong>{product.name}</strong></td>
-                  <td>{product.category}</td>
-                  <td>₹{product.price}</td>
-                  <td>
-                    <span className={`status-badge ${product.inStock ? 'completed' : 'pending'}`}>
-                      {product.inStock ? 'In Stock' : 'Out of Stock'}
-                    </span>
-                  </td>
-                  <td>
-                    <button
-                      className="delete-btn-sm"
-                      onClick={() => deleteProduct(product.id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 
@@ -625,8 +484,6 @@ const AdminPanel = ({ onBack }) => {
         return <AdminUserManagement />;
       case 'orders':
         return renderOrders();
-      case 'products':
-        return renderProducts();
       case 'users':
         return <AdminUserManagement />;
       case 'support':

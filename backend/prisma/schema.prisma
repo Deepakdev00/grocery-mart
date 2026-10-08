@@ -320,3 +320,13 @@ model OtpLog {
   @@index([userId])
   @@index([otp])
 }
+
+model RateLimitBucket {
+  key         String
+  windowStart DateTime
+  count       Int      @default(0)
+  expiresAt   DateTime
+
+  @@id([key, windowStart])
+  @@index([expiresAt])
+}

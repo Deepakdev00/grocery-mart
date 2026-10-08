@@ -1,0 +1,8 @@
+const requireRoles = (...allowedRoles) => (req, res, next) => {
+  const role = req.admin?.role || req.userRole;
+  if (!role) return res.status(401).json({ message: 'Authentication required' });
+  if (!allowedRoles.includes(role)) return res.status(403).json({ message: 'Insufficient role' });
+  return next();
+};
+
+module.exports = { requireRoles };

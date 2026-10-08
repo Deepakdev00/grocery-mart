@@ -1,0 +1,112 @@
+.admin-user-management {
+  --color-primary: #6254d0;
+  --bg-card: #fff;
+  --bg-secondary: #fff;
+  --bg-input: #f6f7fb;
+  --bg-modal: #fff;
+  --border-color: #e8eaf2;
+  --border-light: #eff0f5;
+  --text-heading: #253550;
+  --text-primary: #34435b;
+  --text-secondary: #647188;
+  --text-muted: #8c97a9;
+  --shadow-sm: 0 8px 24px rgba(32, 43, 74, 0.045);
+  position: relative;
+  isolation: isolate;
+  padding: clamp(18px, 2.8vw, 34px) !important;
+  color: #34435b;
+  animation: admin-management-enter 420ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.admin-user-management::before {
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  right: 0;
+  width: min(48vw, 560px);
+  height: 280px;
+  border-radius: 0 0 0 100%;
+  background: radial-gradient(ellipse at top right, rgba(112, 95, 222, 0.075), transparent 68%);
+  content: "";
+  pointer-events: none;
+}
+
+.admin-user-management > div:first-child {
+  min-width: 0;
+}
+
+.admin-user-management h1,
+.admin-user-management h2,
+.admin-user-management h3 {
+  letter-spacing: -0.035em;
+}
+
+.admin-user-management h1 {
+  font-size: clamp(22px, 2.5vw, 29px) !important;
+}
+
+.admin-user-management button {
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+
+.admin-user-management button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.admin-user-management button:focus-visible,
+.admin-user-management input:focus-visible,
+.admin-user-management select:focus-visible {
+  outline: 3px solid rgba(98, 84, 208, 0.24) !important;
+  outline-offset: 2px;
+}
+
+.admin-user-management input:focus,
+.admin-user-management select:focus {
+  border-color: #8173e0 !important;
+  box-shadow: 0 0 0 3px rgba(98, 84, 208, 0.1);
+}
+
+.admin-user-management table tbody tr:hover td {
+  background-color: #faf9ff;
+}
+
+.admin-user-management table td,
+.admin-user-management table th {
+  transition: background-color 140ms ease;
+}
+
+@keyframes admin-management-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-user-management {
+    padding: 16px 12px 24px !important;
+  }
+
+  .admin-user-management > div:first-child h1 {
+    font-size: 21px !important;
+  }
+
+  .admin-user-management table {
+    min-width: 760px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-user-management,
+  .admin-user-management button,
+  .admin-user-management table td,
+  .admin-user-management table th {
+    animation: none;
+    scroll-behavior: auto;
+    transition: none;
+  }
+}

@@ -35,20 +35,14 @@ const ContactUs = ({ onNavigate, onOpenLogin }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.message) {
-      addToast({
-        message: 'Please fill in all required fields.',
-        type: 'error',
-      });
+      addToast('Please fill in all required fields.', 'error');
       return;
     }
 
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      addToast({
-        message: 'Thank you! Your message has been received. Our team will contact you within 2 hours. ✅',
-        type: 'success',
-      });
+      addToast('Thank you! Your message has been received. Our team will contact you within 2 hours. ✅', 'success');
       setFormData({
         name: '',
         email: '',

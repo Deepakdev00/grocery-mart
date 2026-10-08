@@ -1,8 +1,11 @@
+const env = require('../config/env');
+const { AUTH_COOKIE_NAMES } = require('../constants/auth.Constants');
+
 const COOKIE_PATH = '/api';
 const cookieOptions = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  secure: env.nodeEnv === 'production',
+  sameSite: env.nodeEnv === 'production' ? 'none' : 'lax',
   path: COOKIE_PATH
 };
 
@@ -25,21 +28,21 @@ const readCookie = (req, name) => {
 };
 
 const setUserCookies = (res, token, refreshToken) => {
-  res.cookie('gm_access', token, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
-  res.cookie('gm_refresh', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
+  res.cookie(AUTH_COOKIE_NAMES.access, token, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
+  res.cookie(AUTH_COOKIE_NAMES.refresh, refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
 };
 
 const setAdminCookie = (res, token) => {
-  res.cookie('gm_admin', token, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
+  res.cookie(AUTH_COOKIE_NAMES.admin, token, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
 };
 
 const clearUserCookies = (res) => {
-  res.clearCookie('gm_access', cookieOptions);
-  res.clearCookie('gm_refresh', cookieOptions);
+  res.clearCookie(AUTH_COOKIE_NAMES.access, cookieOptions);
+  res.clearCookie(AUTH_COOKIE_NAMES.refresh, cookieOptions);
 };
 
 const clearAdminCookie = (res) => {
-  res.clearCookie('gm_admin', cookieOptions);
+  res.clearCookie(AUTH_COOKIE_NAMES.admin, cookieOptions);
 };
 
 module.exports = {

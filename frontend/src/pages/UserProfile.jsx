@@ -49,39 +49,33 @@ const UserProfile = ({ onBack }) => {
     setLoading(true);
     try {
       await profileAPI.update({ phoneNumber, profileImage });
-      addToast({ message: 'Profile updated successfully', type: 'success' });
+      addToast('Profile updated successfully', 'success');
     } catch (error) {
-      addToast({ message: error.message || 'Failed to update profile', type: 'error' });
+      addToast(error.message || 'Failed to update profile', 'error');
     }
     setLoading(false);
   };
 
   const changePassword = async () => {
     if (newPassword !== confirmPassword) {
-      addToast({
-        message: 'Passwords do not match',
-        type: 'error',
-      });
+      addToast('Passwords do not match', 'error');
       return;
     }
 
     if (newPassword.length < 6) {
-      addToast({
-        message: 'Password must be at least 6 characters',
-        type: 'error',
-      });
+      addToast('Password must be at least 6 characters', 'error');
       return;
     }
 
     setLoading(true);
     try {
       await profileAPI.changePassword({ currentPassword, newPassword, confirmPassword });
-      addToast({ message: 'Password changed successfully', type: 'success' });
+      addToast('Password changed successfully', 'success');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (error) {
-      addToast({ message: error.message || 'Failed to change password', type: 'error' });
+      addToast(error.message || 'Failed to change password', 'error');
     }
     setLoading(false);
   };
@@ -90,12 +84,9 @@ const UserProfile = ({ onBack }) => {
     try {
       await profileAPI.updateTheme(newTheme);
       setTheme(newTheme);
-      addToast({
-        message: `Switched to ${newTheme === 'dark' ? 'Dark' : 'Light'} Mode`,
-        type: 'success',
-      });
+      addToast(`Switched to ${newTheme === 'dark' ? 'Dark' : 'Light'} Mode`, 'success');
     } catch (error) {
-      addToast({ message: error.message || 'Could not update the theme', type: 'error' });
+      addToast(error.message || 'Could not update the theme', 'error');
     }
   };
 
@@ -109,11 +100,11 @@ const UserProfile = ({ onBack }) => {
     setLoading(true);
     try {
       await profileAPI.deleteAccount(password);
-      addToast({ message: 'Account deleted successfully', type: 'success' });
+      addToast('Account deleted successfully', 'success');
       logout();
       onBack();
     } catch (error) {
-      addToast({ message: error.message || 'Failed to delete account', type: 'error' });
+      addToast(error.message || 'Failed to delete account', 'error');
     }
     setLoading(false);
   };

@@ -18,19 +18,13 @@ const AdminLogin = ({ onClose, onLoginSuccess }) => {
 
     try {
       const { admin } = await loginAdmin(email, password);
-      addToast({
-        message: `Welcome ${admin.username}! Admin login successful`,
-        type: 'success',
-      });
+      addToast(`Welcome ${admin.username}! Admin login successful`, 'success');
       onLoginSuccess();
       onClose();
     } catch (err) {
       const errorMsg = err.message || 'Admin login failed. Please try again.';
       setError(errorMsg);
-      addToast({
-        message: errorMsg,
-        type: 'error',
-      });
+      addToast(errorMsg, 'error');
     } finally {
       setIsLoading(false);
     }

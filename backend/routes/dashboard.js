@@ -1,8 +1,7 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
-const { requireAdmin: adminAuthMiddleware } = require('../middleware/jwtAuth');
+const prisma = require('../config/prisma');
+const { requireAdmin: adminAuthMiddleware } = require('../middleware/auth.middleware');
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 // GET /api/admin/dashboard/stats

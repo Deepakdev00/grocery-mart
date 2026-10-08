@@ -1,134 +1,104 @@
 const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const { PrismaClient } = require('@prisma/client');
+const env = require('./config/env');
+const prisma = require('./config/prisma');
+const { checkDatabaseConnection, disconnectDatabase } = require('./config/database');
+const { corsOptions, trustProxy } = require('./config/cors');
+const { requestLogger, logger } = require('./middleware/logger.middleware');
+const { errorMiddleware, notFoundMiddleware } = require('./middleware/error.middleware');
 
-dotenv.config();
+const createApp = () => {
+  const app = express();
 
-const app = express();
-const prisma = new PrismaClient();
+  if (trustProxy) app.set('trust proxy', trustProxy);
 
-// Middleware
-const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:3000')
-  .split(',')
-  .map(origin => origin.trim())
-  .filter(Boolean);
+  app.use(requestLogger);
+  app.use(require('cors')(corsOptions));
+  app.use(express.json({ limit: '100kb' }));
+  app.use((req, res, next) => {
+    const origin = req.get('origin');
+    if (origin && !env.clientOrigins.includes(origin)) {
+      return res.status(403).json({ message: 'Origin not allowed', requestId: req.id });
+    }
+    return next();
+  });
 
-app.use(cors({
-  origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin)),
-  credentials: true
-}));
-app.use(express.json({ limit: '100kb' }));
-app.use((req, res, next) => {
-  const origin = req.get('origin');
-  if (origin && !allowedOrigins.includes(origin)) {
-    return res.status(403).json({ message: 'Origin not allowed' });
-  }
-  next();
-});
+  app.use('/api/auth', require('./routes/auth'));
+  app.use('/api/cart', require('./routes/cart'));
+  app.use('/api/payment', require('./routes/payment'));
+  app.use('/api/admin', require('./routes/admin'));
+  app.use('/api/admin/dashboard', require('./routes/dashboard'));
+  app.use('/api/admin/user-management', require('./routes/userManagement'));
+  app.use('/api/products', require('./routes/products'));
+  app.use('/api/profile', require('./routes/profile'));
+  app.use('/api/support', require('./routes/support'));
+  app.use('/api/wishlist', require('./routes/wishlist'));
 
-// Import routes
-const authRoutes = require('./routes/auth');
-const cartRoutes = require('./routes/cart');
-const paymentRoutes = require('./routes/payment');
-const adminRoutes = require('./routes/admin');
-const dashboardRoutes = require('./routes/dashboard');
-const productRoutes = require('./routes/products');
-const profileRoutes = require('./routes/profile');
-const supportRoutes = require('./routes/support');
-const userManagementRoutes = require('./routes/userManagement');
-const wishlistRoutes = require('./routes/wishlist');
+  app.get('/api/health', async (req, res, next) => {
+    try {
+      await checkDatabaseConnection();
+      return res.json({
+        status: 'OK',
+        message: 'Grocery Mart API with Prisma + Supabase',
+        database: 'Connected',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      return next(error);
+    }
+  });
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/cart', cartRoutes);
-app.use('/api/payment', paymentRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/admin/dashboard', dashboardRoutes);
-app.use('/api/admin/user-management', userManagementRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/profile', profileRoutes);
-app.use('/api/support', supportRoutes);
-app.use('/api/wishlist', wishlistRoutes);
+  app.use(notFoundMiddleware);
+  app.use(errorMiddleware);
+  return app;
+};
 
-// Health check route
-app.get('/api/health', async (req, res) => {
-  try {
-    // Test database connection
-    await prisma.$queryRaw`SELECT 1`;
+const app = createApp();
 
-    res.json({
-      status: 'OK',
-      message: '🚀 Grocery Mart API with Prisma + Supabase',
-      database: 'Connected ✅',
-      timestamp: new Date().toISOString()
+const startServer = async () => {
+  await prisma.$connect();
+  const server = app.listen(env.port, () => {
+    logger.info('Grocery Mart API server started', {
+      port: env.port,
+      database: 'Supabase PostgreSQL',
+      orm: 'Prisma',
     });
-  } catch (error) {
-    res.status(500).json({
-      status: 'ERROR',
-      message: 'Database connection failed',
-      error: error.message
+  });
+
+  let shuttingDown = false;
+  const shutdown = (signal) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    logger.info('Shutting down API server', { signal });
+    server.close(async (error) => {
+      if (error) logger.error('HTTP server shutdown failed', error);
+      try {
+        await disconnectDatabase();
+        process.exit(error ? 1 : 0);
+      } catch (disconnectError) {
+        logger.error('Database shutdown failed', disconnectError);
+        process.exit(1);
+      }
     });
-  }
-});
+  };
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    message: 'Something went wrong!',
-    error: err.message
+  process.once('SIGINT', () => shutdown('SIGINT'));
+  process.once('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('unhandledRejection', (error) => {
+    logger.error('Unhandled promise rejection', error);
+    shutdown('unhandledRejection');
   });
-});
 
-// 404 handler
-app.use((req, res, next) => {
-  res.status(404).json({
-    message: 'Route not found',
-    path: req.path
+  return server;
+};
+
+if (require.main === module) {
+  startServer().catch(async (error) => {
+    logger.error('API startup failed', error);
+    await disconnectDatabase();
+    process.exitCode = 1;
   });
-});
-
-const PORT = process.env.PORT || 5000;
-
-// Start server
-const server = app.listen(PORT, () => {
-  console.log('\n╔════════════════════════════════════════╗');
-  console.log('║   🚀 Grocery Mart Backend API Server   ║');
-  console.log('╚════════════════════════════════════════╝\n');
-  console.log(`✅ Server running on http://localhost:${PORT}`);
-  console.log('📊 Database: Supabase PostgreSQL');
-  console.log('🔧 ORM: Prisma');
-  console.log('\n📋 Available Endpoints:');
-  console.log('  POST   /api/auth/signup');
-  console.log('  POST   /api/auth/login');
-  console.log('  GET    /api/auth/me');
-  console.log('  GET    /api/cart');
-  console.log('  POST   /api/cart/add');
-  console.log('  PUT    /api/cart/update');
-  console.log('  DELETE /api/cart/clear');
-  console.log('  POST   /api/payment/process');
-  console.log('  GET    /api/payment/history');
-  console.log('  GET    /api/payment/:id');
-  console.log('  GET    /api/health\n');
-});
-
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n\n⚠️  Shutting down gracefully...');
-  server.close(async () => {
-    await prisma.$disconnect();
-    console.log('✅ Server stopped');
-    console.log('✅ Database connection closed\n');
-    process.exit(0);
-  });
-});
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', async (err) => {
-  console.error('❌ Unhandled Rejection:', err);
-  await prisma.$disconnect();
-  process.exit(1);
-});
+}
 
 module.exports = app;
+module.exports.createApp = createApp;
+module.exports.startServer = startServer;

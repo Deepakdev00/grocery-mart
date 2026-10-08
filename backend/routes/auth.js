@@ -2,20 +2,18 @@ const express = require('express');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const { PrismaClient } = require('@prisma/client');
-const JWT_SECRET = require('../config/auth');
+const prisma = require('../config/prisma');
+const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/jwt');
 const { readCookie, setUserCookies, clearUserCookies } = require('../middleware/cookies');
-
-const prisma = new PrismaClient();
+const { AUTH_COOKIE_NAMES } = require('../constants/auth.Constants');
+const { rateLimits } = require('../middleware/auth-rate-limit.middleware');
+const { requireUser } = require('../middleware/auth.middleware');
+const { validateBody, schemas } = require('../middleware/validation.middleware');
 const router = express.Router();
 
 // Helper: Extract client IP address
 const getClientIp = (req) => {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
-  }
-  return req.socket?.remoteAddress || req.ip || null;
+  return req.ip || req.socket?.remoteAddress || null;
 };
 
 // Helper: Determine device info from user-agent
@@ -31,7 +29,7 @@ const getDeviceInfo = (userAgent) => {
 
 // Helper: Generate JWT token (7-day expiration)
 const generateToken = (userId, role = 'customer') => {
-  return jwt.sign({ userId, role }, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ userId, role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 };
 
 // Helper: Email validation
@@ -51,43 +49,15 @@ const sanitizeUser = (user) => {
 };
 
 // Middleware: Verify JWT and extract user info
-const authMiddleware = async (req, res, next) => {
-  try {
-    const token = readCookie(req, 'gm_access');
-    if (!token) {
-      return res.status(401).json({ message: 'No token provided' });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const session = await prisma.activeSession.findFirst({
-      where: {
-        token,
-        userId: decoded.userId,
-        isActive: true,
-        expiresAt: { gt: new Date() }
-      },
-      select: { userId: true, user: { select: { role: true, status: true } } }
-    });
-    if (!session || session.user?.status !== 'active') {
-      return res.status(401).json({ message: 'Session is no longer active' });
-    }
-    req.userId = session.userId;
-    req.userRole = session.user.role;
-    req.token = token;
-
-    next();
-  } catch (error) {
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Token expired' });
-    }
-    return res.status(401).json({ message: 'Invalid token' });
-  }
-};
-
 // ==========================================
 // 1. POST /signup - User Registration
 // ==========================================
-router.post('/signup', async (req, res) => {
+router.post(
+  '/signup',
+  validateBody(schemas.signup),
+  rateLimits.signupByIp,
+  rateLimits.signupByIdentity,
+  async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
@@ -196,7 +166,12 @@ router.post('/signup', async (req, res) => {
 // ==========================================
 // 2. POST /login - Login System
 // ==========================================
-router.post('/login', async (req, res) => {
+router.post(
+  '/login',
+  validateBody(schemas.userLogin),
+  rateLimits.loginByIp,
+  rateLimits.loginByIdentity,
+  async (req, res) => {
   const ipAddress = getClientIp(req);
   const userAgent = req.headers['user-agent'] || null;
 
@@ -357,7 +332,7 @@ router.post('/login', async (req, res) => {
 // ==========================================
 // 3. GET /me - Get Current User
 // ==========================================
-router.get('/me', authMiddleware, async (req, res) => {
+router.get('/me', requireUser, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.userId },
@@ -385,7 +360,7 @@ router.get('/me', authMiddleware, async (req, res) => {
 // ==========================================
 router.post('/logout', async (req, res) => {
   try {
-    const token = readCookie(req, 'gm_access');
+    const token = readCookie(req, AUTH_COOKIE_NAMES.access);
 
     if (!token) {
       clearUserCookies(res);
@@ -449,7 +424,12 @@ router.post('/logout', async (req, res) => {
 // ==========================================
 // 5. POST /forgot-password - Forgot Password
 // ==========================================
-router.post('/forgot-password', async (req, res) => {
+router.post(
+  '/forgot-password',
+  validateBody(schemas.email),
+  rateLimits.passwordResetByIp,
+  rateLimits.passwordResetByIdentity,
+  async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -503,7 +483,12 @@ router.post('/forgot-password', async (req, res) => {
 // ==========================================
 // 6. POST /verify-reset-otp - Verify Reset OTP
 // ==========================================
-router.post('/verify-reset-otp', async (req, res) => {
+router.post(
+  '/verify-reset-otp',
+  validateBody(schemas.resetOtp),
+  rateLimits.otpByIp,
+  rateLimits.otpByIdentity,
+  async (req, res) => {
   try {
     const { email, otp } = req.body;
 
@@ -599,7 +584,11 @@ router.post('/verify-reset-otp', async (req, res) => {
 // ==========================================
 // 7. POST /reset-password - Reset Password
 // ==========================================
-router.post('/reset-password', async (req, res) => {
+router.post(
+  '/reset-password',
+  validateBody(schemas.resetPassword),
+  rateLimits.passwordChangeByToken,
+  async (req, res) => {
   const ipAddress = getClientIp(req);
   const userAgent = req.headers['user-agent'] || null;
 
@@ -722,7 +711,7 @@ router.post('/refresh-token', async (req, res) => {
 // ==========================================
 // 9. GET /sessions - List Active Sessions
 // ==========================================
-router.get('/sessions', authMiddleware, async (req, res) => {
+router.get('/sessions', requireUser, async (req, res) => {
   try {
     // List all active sessions for user from ActiveSession table
     const sessions = await prisma.activeSession.findMany({
@@ -756,7 +745,7 @@ router.get('/sessions', authMiddleware, async (req, res) => {
 // ==========================================
 // 10. DELETE /sessions/:sessionId - Revoke Specific Session
 // ==========================================
-router.delete('/sessions/:sessionId', authMiddleware, async (req, res) => {
+router.delete('/sessions/:sessionId', requireUser, async (req, res) => {
   try {
     const { sessionId } = req.params;
 
@@ -788,7 +777,7 @@ router.delete('/sessions/:sessionId', authMiddleware, async (req, res) => {
 // ==========================================
 // 11. DELETE /sessions - Revoke All Other Sessions
 // ==========================================
-router.delete('/sessions', authMiddleware, async (req, res) => {
+router.delete('/sessions', requireUser, async (req, res) => {
   try {
     // Deactivate all sessions for user EXCEPT the current one
     const result = await prisma.activeSession.updateMany({

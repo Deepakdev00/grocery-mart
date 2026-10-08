@@ -1,238 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { userManagementAPI } from '../../services';
 import { useToast } from '../../context';
+import './AdminUserManagement.css';
 
-// Default mock datasets for fallback/offline mode
-const INITIAL_MOCK_USERS = [
-  {
-    id: 'user_1',
-    username: 'alex_mart',
-    name: 'Alex Johnson',
-    email: 'alex.johnson@grocerymart.com',
-    role: 'customer',
-    status: 'active',
-    phone: '+91 98765 43210',
-    createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
-    lastActive: new Date(Date.now() - 15 * 60000).toISOString(),
-    avatarBg: '#3b82f6',
-  },
-  {
-    id: 'user_2',
-    username: 'sarah_ops',
-    name: 'Sarah Connor',
-    email: 'sarah.c@grocerymart.com',
-    role: 'staff',
-    status: 'active',
-    phone: '+91 98765 12345',
-    createdAt: new Date(Date.now() - 14 * 86400000).toISOString(),
-    lastActive: new Date(Date.now() - 2 * 3600000).toISOString(),
-    avatarBg: '#8b5cf6',
-  },
-  {
-    id: 'user_3',
-    username: 'freshfarms_sup',
-    name: 'Fresh Farms Supply Co.',
-    email: 'contact@freshfarms.in',
-    role: 'supplier',
-    status: 'active',
-    phone: '+91 98111 22334',
-    createdAt: new Date(Date.now() - 60 * 86400000).toISOString(),
-    lastActive: new Date(Date.now() - 24 * 3600000).toISOString(),
-    avatarBg: '#f97316',
-  },
-  {
-    id: 'user_4',
-    username: 'greenvalley_ret',
-    name: 'Green Valley Retailers',
-    email: 'orders@greenvalley.com',
-    role: 'retailer',
-    status: 'inactive',
-    phone: '+91 97222 33445',
-    createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
-    lastActive: new Date(Date.now() - 72 * 3600000).toISOString(),
-    avatarBg: '#14b8a6',
-  },
-  {
-    id: 'user_5',
-    username: 'david_miller',
-    name: 'David Miller',
-    email: 'david.m@gmail.com',
-    role: 'customer',
-    status: 'suspended',
-    phone: '+91 96333 44556',
-    createdAt: new Date(Date.now() - 90 * 86400000).toISOString(),
-    lastActive: new Date(Date.now() - 120 * 86400000).toISOString(),
-    avatarBg: '#ef4444',
-  },
-  {
-    id: 'user_6',
-    username: 'priya_sharma',
-    name: 'Priya Sharma',
-    email: 'priya.sharma@grocerymart.com',
-    role: 'staff',
-    status: 'active',
-    phone: '+91 95444 55667',
-    createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
-    lastActive: new Date(Date.now() - 5 * 60000).toISOString(),
-    avatarBg: '#8b5cf6',
-  },
-  {
-    id: 'user_7',
-    username: 'organic_harvest',
-    name: 'Organic Harvest Ltd.',
-    email: 'supply@organicharvest.com',
-    role: 'supplier',
-    status: 'active',
-    phone: '+91 94555 66778',
-    createdAt: new Date(Date.now() - 45 * 86400000).toISOString(),
-    lastActive: new Date(Date.now() - 6 * 3600000).toISOString(),
-    avatarBg: '#f97316',
-  }
-];
+const getActivityActor = (details) => {
+  if (details && typeof details === 'object') return details.adminUsername || 'System';
+  if (typeof details !== 'string') return 'System';
 
-const INITIAL_MOCK_LOGIN_LOGS = [
-  {
-    id: 'log_1',
-    timestamp: new Date(Date.now() - 10 * 60000).toISOString(),
-    email: 'alex.johnson@grocerymart.com',
-    user: 'Alex Johnson',
-    action: 'LOGIN_SUCCESS',
-    ip: '192.168.1.45',
-    userAgent: 'Chrome 122.0 / Windows 11',
-    device: 'Desktop',
-  },
-  {
-    id: 'log_2',
-    timestamp: new Date(Date.now() - 45 * 60000).toISOString(),
-    email: 'unknown.hacker@evil.org',
-    user: 'unknown.hacker@evil.org',
-    action: 'LOGIN_FAILED',
-    ip: '45.134.22.9',
-    userAgent: 'Python-Requests / Linux',
-    device: 'Bot/Script',
-  },
-  {
-    id: 'log_3',
-    timestamp: new Date(Date.now() - 2 * 3600000).toISOString(),
-    email: 'sarah.c@grocerymart.com',
-    user: 'Sarah Connor',
-    action: 'LOGOUT',
-    ip: '192.168.1.12',
-    userAgent: 'Safari 17.2 / macOS Sonoma',
-    device: 'Desktop',
-  },
-  {
-    id: 'log_4',
-    timestamp: new Date(Date.now() - 5 * 3600000).toISOString(),
-    email: 'david.m@gmail.com',
-    user: 'David Miller',
-    action: 'ACCOUNT_LOCKED',
-    ip: '182.74.12.8',
-    userAgent: 'Chrome Mobile 120.0 / Android 14',
-    device: 'Mobile',
-  },
-  {
-    id: 'log_5',
-    timestamp: new Date(Date.now() - 12 * 3600000).toISOString(),
-    email: 'contact@freshfarms.in',
-    user: 'Fresh Farms Supply Co.',
-    action: 'PASSWORD_RESET',
-    ip: '103.21.124.5',
-    userAgent: 'Firefox 123.0 / Windows 10',
-    device: 'Desktop',
-  },
-  {
-    id: 'log_6',
-    timestamp: new Date(Date.now() - 24 * 3600000).toISOString(),
-    email: 'priya.sharma@grocerymart.com',
-    user: 'Priya Sharma',
-    action: 'LOGIN_SUCCESS',
-    ip: '192.168.1.88',
-    userAgent: 'Chrome 122.0 / Windows 11',
-    device: 'Desktop',
-  },
-  {
-    id: 'log_7',
-    timestamp: new Date(Date.now() - 36 * 3600000).toISOString(),
-    email: 'orders@greenvalley.com',
-    user: 'Green Valley Retailers',
-    action: 'LOGIN_FAILED',
-    ip: '115.99.201.44',
-    userAgent: 'Edge 122.0 / Windows 10',
-    device: 'Desktop',
+  try {
+    const parsedDetails = JSON.parse(details);
+    return parsedDetails.adminUsername || 'System';
+  } catch {
+    return 'System';
   }
-];
-
-const INITIAL_MOCK_ACTIVITY_LOGS = [
-  {
-    id: 'act_1',
-    timestamp: new Date(Date.now() - 15 * 60000).toISOString(),
-    action: 'ROLE_UPDATED',
-    performedBy: 'admin@grocerymart.com',
-    details: { targetUser: 'sarah.c@grocerymart.com', oldRole: 'customer', newRole: 'staff', reason: 'Promotion to store manager' },
-    ip: '192.168.1.1',
-  },
-  {
-    id: 'act_2',
-    timestamp: new Date(Date.now() - 2 * 3600000).toISOString(),
-    action: 'STATUS_CHANGED',
-    performedBy: 'admin@grocerymart.com',
-    details: { targetUser: 'david.m@gmail.com', oldStatus: 'active', newStatus: 'suspended', reason: 'Repeated failed login attempts / security lock' },
-    ip: '192.168.1.1',
-  },
-  {
-    id: 'act_3',
-    timestamp: new Date(Date.now() - 8 * 3600000).toISOString(),
-    action: 'USER_CREATED',
-    performedBy: 'admin@grocerymart.com',
-    details: { targetUser: 'priya.sharma@grocerymart.com', role: 'staff', channel: 'Admin Dashboard Onboarding' },
-    ip: '192.168.1.1',
-  },
-  {
-    id: 'act_4',
-    timestamp: new Date(Date.now() - 18 * 3600000).toISOString(),
-    action: 'FORCE_LOGOUT',
-    performedBy: 'admin@grocerymart.com',
-    details: { targetUser: 'orders@greenvalley.com', revokedSessionsCount: 2, reason: 'Security session purge' },
-    ip: '192.168.1.1',
-  },
-  {
-    id: 'act_5',
-    timestamp: new Date(Date.now() - 30 * 3600000).toISOString(),
-    action: 'STATUS_CHANGED',
-    performedBy: 'admin@grocerymart.com',
-    details: { targetUser: 'orders@greenvalley.com', oldStatus: 'active', newStatus: 'inactive', reason: 'Inactivity past 30 days' },
-    ip: '192.168.1.1',
-  },
-  {
-    id: 'act_6',
-    timestamp: new Date(Date.now() - 48 * 3600000).toISOString(),
-    action: 'ROLE_UPDATED',
-    performedBy: 'admin@grocerymart.com',
-    details: { targetUser: 'contact@freshfarms.in', oldRole: 'retailer', newRole: 'supplier', reason: 'Account type alignment' },
-    ip: '192.168.1.1',
-  }
-];
+};
 
 export const AdminUserManagement = () => {
-  // Safe Toast hook consumption
-  let toastContext = null;
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    toastContext = useToast();
-  } catch (err) {
-    // Fallback if rendered outside ToastProvider
-  }
+  const { addToast } = useToast();
 
   const showToast = useCallback((message, type = 'success') => {
-    if (toastContext && toastContext[type]) {
-      toastContext[type](message);
-    } else if (toastContext && toastContext.addToast) {
-      toastContext.addToast(message, type);
-    } else {
-      console.log(`[Toast ${type}]:`, message);
-    }
-  }, [toastContext]);
+    addToast(message, type);
+  }, [addToast]);
 
   // Tab State
   const [activeTab, setActiveTab] = useState('directory'); // 'directory' | 'create' | 'access_logs' | 'activity_logs'
@@ -242,7 +30,8 @@ export const AdminUserManagement = () => {
   const [statsLoading, setStatsLoading] = useState(false);
 
   // Tab 1: User Directory State
-  const [users, setUsers] = useState(INITIAL_MOCK_USERS);
+  const [users, setUsers] = useState([]);
+  const [totalUsersFound, setTotalUsersFound] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -251,10 +40,10 @@ export const AdminUserManagement = () => {
 
   // Stats State
   const [stats, setStats] = useState({
-    totalUsers: 7,
-    activeUsers: 5,
-    inactiveUsers: 1,
-    newThisWeek: 2,
+    totalUsers: 0,
+    activeUsers: 0,
+    inactiveUsers: 0,
+    newUsersLast7Days: 0,
   });
 
   // Tab 2: Create User Form State
@@ -275,7 +64,8 @@ export const AdminUserManagement = () => {
   const [loadingSessions, setLoadingSessions] = useState(false);
 
   // Tab 3: Access Logs State
-  const [accessLogs, setAccessLogs] = useState(INITIAL_MOCK_LOGIN_LOGS);
+  const [accessLogs, setAccessLogs] = useState([]);
+  const [accessLogCount, setAccessLogCount] = useState(0);
   const [accessActionFilter, setAccessActionFilter] = useState('all');
   const [accessSearchQuery, setAccessSearchQuery] = useState('');
   const [accessStartDate, setAccessStartDate] = useState('');
@@ -284,108 +74,95 @@ export const AdminUserManagement = () => {
   const logsPerPage = 6;
 
   // Tab 4: Activity Logs State
-  const [activityLogs, setActivityLogs] = useState(INITIAL_MOCK_ACTIVITY_LOGS);
+  const [activityLogs, setActivityLogs] = useState([]);
+  const [activityLogCount, setActivityLogCount] = useState(0);
   const [activitySearchQuery, setActivitySearchQuery] = useState('');
   const [activityActionFilter, setActivityActionFilter] = useState('all');
   const [activityPage, setActivityPage] = useState(1);
-
-  // Helper to calculate stats locally
-  const computeStats = useCallback((userList) => {
-    const oneWeekAgo = Date.now() - 7 * 86400000;
-    const total = userList.length;
-    const active = userList.filter(u => u.status === 'active').length;
-    const inactive = userList.filter(u => u.status === 'inactive' || u.status === 'suspended').length;
-    const newWeek = userList.filter(u => {
-      const createdTime = new Date(u.createdAt).getTime();
-      return createdTime >= oneWeekAgo;
-    }).length;
-
-    return {
-      totalUsers: total,
-      activeUsers: active,
-      inactiveUsers: inactive,
-      newThisWeek: newWeek,
-    };
-  }, []);
 
   // Fetch Dashboard Stats
   const loadStats = useCallback(async () => {
     setStatsLoading(true);
     try {
-      if (userManagementAPI?.getAuthStats) {
-        const res = await userManagementAPI.getAuthStats();
-        if (res && res.stats) {
-          setStats(res.stats);
-          setStatsLoading(false);
-          return;
-        }
-      }
+      const res = await userManagementAPI.getAuthStats();
+      setStats(res.stats);
     } catch (err) {
-      console.warn('API getAuthStats failed, calculating from local state:', err.message);
+      showToast(err.message || 'Failed to load user statistics', 'error');
+    } finally {
+      setStatsLoading(false);
     }
-    // Fallback calculation
-    setStats(prev => ({ ...prev, ...computeStats(users) }));
-    setStatsLoading(false);
-  }, [computeStats, users]);
+  }, [showToast]);
 
   // Fetch Users
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      if (userManagementAPI?.getUsers) {
-        const res = await userManagementAPI.getUsers({
-          search: searchQuery || undefined,
-          role: roleFilter !== 'all' ? roleFilter : undefined,
-          status: statusFilter !== 'all' ? statusFilter : undefined,
-        });
-        if (res && res.users && Array.isArray(res.users)) {
-          setUsers(res.users);
-          if (res.stats) setStats(res.stats);
-          setLoading(false);
-          return;
-        }
-      }
+      const res = await userManagementAPI.getUsers({
+        page: currentPage,
+        limit: usersPerPage,
+        search: searchQuery || undefined,
+        role: roleFilter !== 'all' ? roleFilter : undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+      });
+      setUsers(Array.isArray(res.users) ? res.users : []);
+      setTotalUsersFound(res.pagination?.total || 0);
     } catch (err) {
-      console.warn('API getUsers failed, using local user store:', err.message);
+      setUsers([]);
+      setTotalUsersFound(0);
+      showToast(err.message || 'Failed to load users', 'error');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [searchQuery, roleFilter, statusFilter]);
+  }, [currentPage, searchQuery, roleFilter, statusFilter, showToast]);
 
   // Fetch Access Logs
   const loadAccessLogs = useCallback(async () => {
     try {
-      if (userManagementAPI?.getLoginLogs) {
-        const res = await userManagementAPI.getLoginLogs({
-          search: accessSearchQuery || undefined,
-          action: accessActionFilter !== 'all' ? accessActionFilter : undefined,
-          startDate: accessStartDate || undefined,
-          endDate: accessEndDate || undefined,
-        });
-        if (res && res.logs && Array.isArray(res.logs)) {
-          setAccessLogs(res.logs);
-        }
-      }
+      const res = await userManagementAPI.getLoginLogs({
+        page: accessPage,
+        limit: logsPerPage,
+        email: accessSearchQuery || undefined,
+        action: accessActionFilter !== 'all' ? accessActionFilter : undefined,
+        startDate: accessStartDate || undefined,
+        endDate: accessEndDate || undefined,
+      });
+      setAccessLogs((res.loginLogs || []).map(log => ({
+        ...log,
+        timestamp: log.createdAt,
+        user: log.user?.username || log.email,
+        ip: log.ipAddress,
+        device: log.userAgent,
+      })));
+      setAccessLogCount(res.pagination?.total || 0);
     } catch (err) {
-      console.warn('API getLoginLogs failed, using mock data:', err.message);
+      setAccessLogs([]);
+      setAccessLogCount(0);
+      showToast(err.message || 'Failed to load access logs', 'error');
     }
-  }, [accessSearchQuery, accessActionFilter, accessStartDate, accessEndDate]);
+  }, [accessPage, accessSearchQuery, accessActionFilter, accessStartDate, accessEndDate, showToast]);
 
   // Fetch Activity Logs
   const loadActivityLogs = useCallback(async () => {
     try {
-      if (userManagementAPI?.getActivityLogs) {
-        const res = await userManagementAPI.getActivityLogs({
-          search: activitySearchQuery || undefined,
-          action: activityActionFilter !== 'all' ? activityActionFilter : undefined,
-        });
-        if (res && res.logs && Array.isArray(res.logs)) {
-          setActivityLogs(res.logs);
-        }
-      }
+      const res = await userManagementAPI.getActivityLogs({
+        page: activityPage,
+        limit: logsPerPage,
+        search: activitySearchQuery || undefined,
+        action: activityActionFilter !== 'all' ? activityActionFilter : undefined,
+      });
+      setActivityLogs((res.activityLogs || []).map(log => ({
+        ...log,
+        timestamp: log.createdAt,
+        performedBy: getActivityActor(log.details),
+        ip: log.ipAddress,
+      })));
+      setActivityLogCount(res.pagination?.total || 0);
     } catch (err) {
-      console.warn('API getActivityLogs failed, using mock data:', err.message);
+      setActivityLogs([]);
+      setActivityLogCount(0);
+      showToast(err.message || 'Failed to load activity logs', 'error');
     }
-  }, [activitySearchQuery, activityActionFilter]);
+  }, [activityPage, activitySearchQuery, activityActionFilter, showToast]);
 
   // Initial load
   useEffect(() => {
@@ -452,58 +229,10 @@ export const AdminUserManagement = () => {
     };
 
     try {
-      let created = null;
-      if (userManagementAPI?.createUser) {
-        const res = await userManagementAPI.createUser(newUserData);
-        if (res && res.user) {
-          created = res.user;
-        }
-      }
-
-      if (!created) {
-        // Fallback local creation
-        const roleColors = {
-          customer: '#3b82f6',
-          staff: '#8b5cf6',
-          supplier: '#f97316',
-          retailer: '#14b8a6',
-        };
-        created = {
-          id: 'user_' + Date.now(),
-          username: newUserData.username,
-          name: newUserData.username,
-          email: newUserData.email,
-          role: newUserData.role,
-          status: 'active',
-          phone: newUserData.phone || '+91 99000 00000',
-          createdAt: new Date().toISOString(),
-          lastActive: 'Just now',
-          avatarBg: roleColors[newUserData.role] || '#3b82f6',
-        };
-      }
-
-      setUsers(prev => [created, ...prev]);
-
-      // Record Activity Log
-      const newActLog = {
-        id: 'act_' + Date.now(),
-        timestamp: new Date().toISOString(),
-        action: 'USER_CREATED',
-        performedBy: 'admin@grocerymart.com',
-        details: { targetUser: created.email, role: created.role, username: created.username },
-        ip: '192.168.1.1',
-      };
-      setActivityLogs(prev => [newActLog, ...prev]);
-
-      // Update stats
-      setStats(prev => ({
-        ...prev,
-        totalUsers: prev.totalUsers + 1,
-        activeUsers: prev.activeUsers + 1,
-        newThisWeek: prev.newThisWeek + 1,
-      }));
-
-      showToast(`User ${created.username} created successfully!`, 'success');
+      const res = await userManagementAPI.createUser(newUserData);
+      if (!res?.user) throw new Error('The server did not return the created user');
+      await Promise.all([loadUsers(), loadStats()]);
+      showToast(`User ${res.user.username} created successfully!`, 'success');
       setCreateForm({
         username: '',
         email: '',
@@ -525,27 +254,9 @@ export const AdminUserManagement = () => {
   const handleRoleChange = async (userId, newRole) => {
     const targetUser = users.find(u => u.id === userId);
     if (!targetUser) return;
-    const oldRole = targetUser.role;
-
     try {
-      if (userManagementAPI?.updateUserRole) {
-        await userManagementAPI.updateUserRole(userId, newRole);
-      }
-      setUsers(prev =>
-        prev.map(u => (u.id === userId ? { ...u, role: newRole } : u))
-      );
-
-      // Record activity log
-      const newActLog = {
-        id: 'act_' + Date.now(),
-        timestamp: new Date().toISOString(),
-        action: 'ROLE_UPDATED',
-        performedBy: 'admin@grocerymart.com',
-        details: { targetUser: targetUser.email, oldRole, newRole },
-        ip: '192.168.1.1',
-      };
-      setActivityLogs(prev => [newActLog, ...prev]);
-
+      await userManagementAPI.updateUserRole(userId, newRole);
+      await Promise.all([loadUsers(), loadStats()]);
       showToast(`Role for ${targetUser.username} updated to ${newRole.toUpperCase()}`, 'success');
     } catch (err) {
       showToast(err.message || 'Failed to update role', 'error');
@@ -556,27 +267,9 @@ export const AdminUserManagement = () => {
   const handleStatusChange = async (userId, newStatus) => {
     const targetUser = users.find(u => u.id === userId);
     if (!targetUser) return;
-    const oldStatus = targetUser.status;
-
     try {
-      if (userManagementAPI?.updateUserStatus) {
-        await userManagementAPI.updateUserStatus(userId, newStatus);
-      }
-      const updatedList = users.map(u => (u.id === userId ? { ...u, status: newStatus } : u));
-      setUsers(updatedList);
-      setStats(computeStats(updatedList));
-
-      // Record activity log
-      const newActLog = {
-        id: 'act_' + Date.now(),
-        timestamp: new Date().toISOString(),
-        action: 'STATUS_CHANGED',
-        performedBy: 'admin@grocerymart.com',
-        details: { targetUser: targetUser.email, oldStatus, newStatus },
-        ip: '192.168.1.1',
-      };
-      setActivityLogs(prev => [newActLog, ...prev]);
-
+      await userManagementAPI.updateUserStatus(userId, newStatus);
+      await Promise.all([loadUsers(), loadStats()]);
       showToast(`Status for ${targetUser.username} updated to ${newStatus.toUpperCase()}`, 'success');
     } catch (err) {
       showToast(err.message || 'Failed to update user status', 'error');
@@ -593,21 +286,7 @@ export const AdminUserManagement = () => {
     }
 
     try {
-      if (userManagementAPI?.forceLogoutUser) {
-        await userManagementAPI.forceLogoutUser(userId);
-      }
-
-      // Record activity log
-      const newActLog = {
-        id: 'act_' + Date.now(),
-        timestamp: new Date().toISOString(),
-        action: 'FORCE_LOGOUT',
-        performedBy: 'admin@grocerymart.com',
-        details: { targetUser: targetUser.email, action: 'Terminated all active tokens/sessions' },
-        ip: '192.168.1.1',
-      };
-      setActivityLogs(prev => [newActLog, ...prev]);
-
+      await userManagementAPI.forceLogoutUser(userId);
       showToast(`Active sessions for ${targetUser.username} have been terminated`, 'success');
       if (sessionsModalUser?.id === userId) {
         setUserSessions([]);
@@ -622,40 +301,16 @@ export const AdminUserManagement = () => {
     setSessionsModalUser(user);
     setLoadingSessions(true);
     try {
-      let sessions = [];
-      if (userManagementAPI?.getUserSessions) {
-        const res = await userManagementAPI.getUserSessions(user.id);
-        if (res && res.sessions && Array.isArray(res.sessions)) {
-          sessions = res.sessions;
-        }
-      }
-
-      if (sessions.length === 0) {
-        // Mock fallback sessions
-        sessions = [
-          {
-            id: 'sess_' + user.id + '_1',
-            device: 'Chrome 122 / Windows 11',
-            ip: '192.168.1.45',
-            loginTime: new Date(Date.now() - 3 * 3600000).toISOString(),
-            lastActive: new Date(Date.now() - 10 * 60000).toISOString(),
-            status: 'active',
-            isCurrent: true,
-          },
-          {
-            id: 'sess_' + user.id + '_2',
-            device: 'Safari / iPhone 15 Pro',
-            ip: '172.56.21.90',
-            loginTime: new Date(Date.now() - 2 * 86400000).toISOString(),
-            lastActive: new Date(Date.now() - 28 * 3600000).toISOString(),
-            status: 'active',
-            isCurrent: false,
-          }
-        ];
-      }
-      setUserSessions(sessions);
+      const res = await userManagementAPI.getUserSessions(user.id);
+      setUserSessions((res.activeSessions || []).map(session => ({
+        ...session,
+        device: session.deviceInfo || session.userAgent,
+        ip: session.ipAddress,
+        loginTime: session.loginAt,
+        lastActive: session.lastActiveAt,
+      })));
     } catch (err) {
-      console.warn('Failed to load user sessions:', err.message);
+      showToast(err.message || 'Failed to load user sessions', 'error');
       setUserSessions([]);
     } finally {
       setLoadingSessions(false);
@@ -663,75 +318,17 @@ export const AdminUserManagement = () => {
   };
 
   // Filtering for Directory
-  const filteredUsers = users.filter(user => {
-    const matchesSearch =
-      (user.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (user.username || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (user.email || '').toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesRole = roleFilter === 'all' || (user.role || '').toLowerCase() === roleFilter.toLowerCase();
-    const matchesStatus = statusFilter === 'all' || (user.status || '').toLowerCase() === statusFilter.toLowerCase();
-
-    return matchesSearch && matchesRole && matchesStatus;
-  });
-
-  const totalUserPages = Math.ceil(filteredUsers.length / usersPerPage) || 1;
-  const paginatedUsers = filteredUsers.slice(
-    (currentPage - 1) * usersPerPage,
-    currentPage * usersPerPage
-  );
+  const filteredUsers = users;
+  const totalUserPages = Math.ceil(totalUsersFound / usersPerPage) || 1;
+  const paginatedUsers = filteredUsers;
 
   // Filtering for Access Logs
-  const filteredAccessLogs = accessLogs.filter(log => {
-    const matchesSearch =
-      (log.email || '').toLowerCase().includes(accessSearchQuery.toLowerCase()) ||
-      (log.user || '').toLowerCase().includes(accessSearchQuery.toLowerCase()) ||
-      (log.ip || '').includes(accessSearchQuery);
-
-    const matchesAction =
-      accessActionFilter === 'all' ||
-      log.action.toLowerCase() === accessActionFilter.toLowerCase();
-
-    let matchesDate = true;
-    if (accessStartDate) {
-      matchesDate = matchesDate && new Date(log.timestamp) >= new Date(accessStartDate);
-    }
-    if (accessEndDate) {
-      const end = new Date(accessEndDate);
-      end.setHours(23, 59, 59, 999);
-      matchesDate = matchesDate && new Date(log.timestamp) <= end;
-    }
-
-    return matchesSearch && matchesAction && matchesDate;
-  });
-
-  const totalAccessPages = Math.ceil(filteredAccessLogs.length / logsPerPage) || 1;
-  const paginatedAccessLogs = filteredAccessLogs.slice(
-    (accessPage - 1) * logsPerPage,
-    accessPage * logsPerPage
-  );
-
-  // Filtering for Activity Logs
-  const filteredActivityLogs = activityLogs.filter(log => {
-    const detailsStr = typeof log.details === 'object' ? JSON.stringify(log.details) : String(log.details);
-    const matchesSearch =
-      (log.performedBy || '').toLowerCase().includes(activitySearchQuery.toLowerCase()) ||
-      (log.action || '').toLowerCase().includes(activitySearchQuery.toLowerCase()) ||
-      detailsStr.toLowerCase().includes(activitySearchQuery.toLowerCase()) ||
-      (log.ip || '').includes(activitySearchQuery);
-
-    const matchesAction =
-      activityActionFilter === 'all' ||
-      log.action.toLowerCase() === activityActionFilter.toLowerCase();
-
-    return matchesSearch && matchesAction;
-  });
-
-  const totalActivityPages = Math.ceil(filteredActivityLogs.length / logsPerPage) || 1;
-  const paginatedActivityLogs = filteredActivityLogs.slice(
-    (activityPage - 1) * logsPerPage,
-    activityPage * logsPerPage
-  );
+  const filteredAccessLogs = accessLogs;
+  const totalAccessPages = Math.ceil(accessLogCount / logsPerPage) || 1;
+  const paginatedAccessLogs = filteredAccessLogs;
+  const filteredActivityLogs = activityLogs;
+  const totalActivityPages = Math.ceil(activityLogCount / logsPerPage) || 1;
+  const paginatedActivityLogs = filteredActivityLogs;
 
   // Format Date helper
   const formatDate = (dateString) => {
@@ -1233,7 +830,7 @@ export const AdminUserManagement = () => {
             <span>✨</span>
           </div>
           <div>
-            <p style={styles.statValue}>{statsLoading ? '...' : stats.newThisWeek}</p>
+            <p style={styles.statValue}>{statsLoading ? '...' : stats.newUsersLast7Days}</p>
             <p style={styles.statLabel}>New (This Week)</p>
           </div>
         </div>
@@ -1425,8 +1022,8 @@ export const AdminUserManagement = () => {
         {/* Pagination */}
         <div style={styles.pagination}>
           <span style={{ fontSize: '13px', color: 'var(--text-muted, #64748b)' }}>
-            Showing {filteredUsers.length > 0 ? (currentPage - 1) * usersPerPage + 1 : 0} to{' '}
-            {Math.min(currentPage * usersPerPage, filteredUsers.length)} of {filteredUsers.length} users
+            Showing {totalUsersFound > 0 ? (currentPage - 1) * usersPerPage + 1 : 0} to{' '}
+            {Math.min(currentPage * usersPerPage, totalUsersFound)} of {totalUsersFound} users
           </span>
 
           <div style={{ display: 'flex', gap: '6px' }}>
@@ -1600,7 +1197,7 @@ export const AdminUserManagement = () => {
       <div style={styles.filterBar}>
         <input
           type="text"
-          placeholder="Search by user, email, or IP address..."
+          placeholder="Search by email..."
           value={accessSearchQuery}
           onChange={(e) => {
             setAccessSearchQuery(e.target.value);
@@ -1619,11 +1216,11 @@ export const AdminUserManagement = () => {
             style={styles.selectInput}
           >
             <option value="all">All Action Types</option>
-            <option value="LOGIN_SUCCESS">Login Success</option>
-            <option value="LOGIN_FAILED">Login Failed</option>
-            <option value="LOGOUT">Logout</option>
-            <option value="PASSWORD_RESET">Password Reset</option>
-            <option value="ACCOUNT_LOCKED">Account Locked</option>
+            <option value="login_success">Login Success</option>
+            <option value="login_failed">Login Failed</option>
+            <option value="logout">Logout</option>
+            <option value="password_reset">Password Reset</option>
+            <option value="account_locked">Account Locked</option>
           </select>
 
           <input
@@ -1710,11 +1307,11 @@ export const AdminUserManagement = () => {
                       </span>
                     </td>
                     <td style={styles.td}>
-                      <code style={{ fontSize: '13px', color: 'var(--text-secondary, #334155)' }}>{log.ip || '127.0.0.1'}</code>
+                      <code style={{ fontSize: '13px', color: 'var(--text-secondary, #334155)' }}>{log.ip || 'N/A'}</code>
                     </td>
                     <td style={styles.td}>
                       <span style={{ fontSize: '13px', color: 'var(--text-secondary, #475569)' }}>
-                        {log.userAgent || log.device || 'Web Browser'}
+                        {log.userAgent || log.device || 'Unknown device'}
                       </span>
                     </td>
                   </tr>
@@ -1727,8 +1324,8 @@ export const AdminUserManagement = () => {
         {/* Access Logs Pagination */}
         <div style={styles.pagination}>
           <span style={{ fontSize: '13px', color: 'var(--text-muted, #64748b)' }}>
-            Showing {filteredAccessLogs.length > 0 ? (accessPage - 1) * logsPerPage + 1 : 0} to{' '}
-            {Math.min(accessPage * logsPerPage, filteredAccessLogs.length)} of {filteredAccessLogs.length} logs
+            Showing {accessLogCount > 0 ? (accessPage - 1) * logsPerPage + 1 : 0} to{' '}
+            {Math.min(accessPage * logsPerPage, accessLogCount)} of {accessLogCount} logs
           </span>
 
           <div style={{ display: 'flex', gap: '6px' }}>
@@ -1772,7 +1369,7 @@ export const AdminUserManagement = () => {
       <div style={styles.filterBar}>
         <input
           type="text"
-          placeholder="Search by action, performer, or detail..."
+          placeholder="Search by action, detail, IP, or performer..."
           value={activitySearchQuery}
           onChange={(e) => {
             setActivitySearchQuery(e.target.value);
@@ -1791,10 +1388,10 @@ export const AdminUserManagement = () => {
             style={styles.selectInput}
           >
             <option value="all">All Change Types</option>
-            <option value="ROLE_UPDATED">Role Updated</option>
-            <option value="STATUS_CHANGED">Status Changed</option>
-            <option value="USER_CREATED">User Created</option>
-            <option value="FORCE_LOGOUT">Force Logout</option>
+            <option value="role_change">Role Updated</option>
+            <option value="status_change">Status Changed</option>
+            <option value="user_created">User Created</option>
+            <option value="force_logout">Force Logout</option>
           </select>
 
           {(activitySearchQuery || activityActionFilter !== 'all') && (
@@ -1878,7 +1475,7 @@ export const AdminUserManagement = () => {
                     </td>
                     <td style={styles.td}>
                       <code style={{ fontSize: '13px', color: 'var(--text-secondary, #334155)' }}>
-                        {log.ip || '127.0.0.1'}
+                        {log.ip || 'N/A'}
                       </code>
                     </td>
                   </tr>
@@ -1891,8 +1488,8 @@ export const AdminUserManagement = () => {
         {/* Activity Logs Pagination */}
         <div style={styles.pagination}>
           <span style={{ fontSize: '13px', color: 'var(--text-muted, #64748b)' }}>
-            Showing {filteredActivityLogs.length > 0 ? (activityPage - 1) * logsPerPage + 1 : 0} to{' '}
-            {Math.min(activityPage * logsPerPage, filteredActivityLogs.length)} of {filteredActivityLogs.length} logs
+            Showing {activityLogCount > 0 ? (activityPage - 1) * logsPerPage + 1 : 0} to{' '}
+            {Math.min(activityPage * logsPerPage, activityLogCount)} of {activityLogCount} logs
           </span>
 
           <div style={{ display: 'flex', gap: '6px' }}>
@@ -1928,7 +1525,7 @@ export const AdminUserManagement = () => {
   );
 
   return (
-    <div style={styles.container}>
+    <div className="admin-user-management" style={styles.container}>
       {/* Page Header */}
       <div style={styles.headerRow}>
         <div>
@@ -2175,7 +1772,7 @@ export const AdminUserManagement = () => {
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontWeight: '600', fontSize: '14px', color: 'var(--text-heading, #0f172a)' }}>
-                            {session.device || 'Desktop Device'}
+                            {session.device || 'Unknown device'}
                           </span>
                           {session.isCurrent && (
                             <span
@@ -2193,7 +1790,7 @@ export const AdminUserManagement = () => {
                           )}
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-secondary, #475569)', marginTop: '4px' }}>
-                          IP: <code>{session.ip}</code>
+                          IP: <code>{session.ip || 'N/A'}</code>
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted, #64748b)', marginTop: '2px' }}>
                           Logged in: {formatDate(session.loginTime)} • Last active: {formatDate(session.lastActive)}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { useAuth, useToast } from '../../context';
+import { useAuth, useTheme, useToast } from '../../context';
 import ForgotPasswordModal from './ForgotPasswordModal';
+import './AuthPage.css';
 
 const LoginModal = ({ onClose, onLoginSuccess, initialIsSignUp = false }) => {
   const [isSignUp, setIsSignUp] = useState(initialIsSignUp);
@@ -13,6 +14,7 @@ const LoginModal = ({ onClose, onLoginSuccess, initialIsSignUp = false }) => {
   const [error, setError] = useState('');
 
   const { login, signup } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const { success, error: showError } = useToast();
 
   if (showForgotPassword) {
@@ -67,163 +69,140 @@ const LoginModal = ({ onClose, onLoginSuccess, initialIsSignUp = false }) => {
   };
 
   return (
-    <div className="overlay modal-center">
-      <div className="modal-box">
-        <span className="close-icon" onClick={onClose}>×</span>
+    <div className="auth-page-overlay">
+      <header className="auth-page-header">
+        <button className="auth-brand" onClick={onClose} aria-label="Return to Grocery Mart">
+          <span className="auth-brand-mark">G</span>
+          <span>Grocery<span>Mart</span><small>FRESH, MADE SIMPLE</small></span>
+        </button>
+        <button
+          className="auth-theme-toggle"
+          onClick={toggleTheme}
+          aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+        >
+          {isDark ? '☀' : '☾'}
+        </button>
+      </header>
 
-        {/* Dynamic Header */}
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <h3 style={{ margin: '0 0 10px 0' }}>
+      <main className="auth-page-main">
+        <section className="auth-card" aria-labelledby="auth-title">
+          <button className="auth-back-button" onClick={onClose} aria-label="Go back">←</button>
+          <div className="auth-title-block">
+            <div className="auth-eyebrow">YOUR NEIGHBORHOOD STORE</div>
+            <h1 id="auth-title">
             {isSignUp ? 'Sign Up' : 'Login'}
-          </h3>
-          <p style={{ color: '#666', fontSize: '14px', margin: 0 }}>
-            {isSignUp ? 'Create a new account' : 'Log in to continue'}
-          </p>
-        </div>
-
-        {/* Error Message */}
-        {error && (
-          <div
-            style={{
-              background: '#fee',
-              color: '#c00',
-              padding: '10px',
-              borderRadius: '8px',
-              marginBottom: '15px',
-              fontSize: '13px',
-              textAlign: 'center',
-            }}
-          >
-            {error}
+            </h1>
+            <p>{isSignUp ? 'Create your account to get started.' : 'Welcome back. Sign in to continue.'}</p>
           </div>
-        )}
 
-        {/* Sign Up: Username Input */}
-        {isSignUp && (
-          <div className="input-group" style={{ marginBottom: '15px' }}>
+          {error && <div className="auth-error-message" role="alert">{error}</div>}
+
+          {isSignUp && (
+            <label className="auth-field">
+              <span>Your name</span>
             <input
+              id="auth-username"
               type="text"
-              placeholder="Enter username"
-              className="card-input"
+              placeholder="How should we call you?"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '1px solid #0c0b0b',
-                borderRadius: '8px',
-                outline: 'none',
-              }}
+              autoComplete="name"
+              required
             />
-          </div>
-        )}
+            </label>
+          )}
 
-        {/* Email Input */}
-        <div style={{ marginBottom: '15px' }}>
+          <label className="auth-field">
+            <span>Email address</span>
           <input
+            id="auth-email"
             type="email"
-            placeholder="Enter email address"
+            placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: '1px solid #ddd',
-              borderRadius: '8px',
-              outline: 'none',
-              fontSize: '14px',
-            }}
+            autoComplete="email"
+            required
           />
-        </div>
+          </label>
 
-        {/* Password Input */}
-        <div style={{ marginTop: '15px', position: 'relative' }}>
+          <label className="auth-field auth-password-field">
+            <span>Password</span>
+            <div className="auth-password-control">
           <input
+            id="auth-password"
             type={showPassword ? 'text' : 'password'}
-            placeholder="Enter password (min 6 characters)"
+            placeholder={isSignUp ? 'At least 6 characters' : 'Enter your password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px 40px 12px 12px',
-              border: '1px solid #ddd',
-              borderRadius: '8px',
-              outline: 'none',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-            }}
+            autoComplete={isSignUp ? 'new-password' : 'current-password'}
+            required
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            style={{
-              position: 'absolute',
-              right: '10px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '18px',
-              padding: '0',
-            }}
+            className="auth-password-toggle"
             title={showPassword ? 'Hide password' : 'Show password'}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
           >
             {showPassword ? '👁️' : '👁️‍🗨️'}
           </button>
-        </div>
+            </div>
+          </label>
 
-        {/* Forgot Password Link (Login mode only) */}
         {!isSignUp && (
-          <div style={{ textAlign: 'right', marginTop: '8px' }}>
+          <div className="auth-options-row">
             <span
               onClick={() => {
                 setShowForgotPassword(true);
                 setError('');
               }}
-              style={{
-                fontSize: '12px',
-                color: '#0aad0a',
-                fontWeight: '600',
-                cursor: 'pointer',
-                textDecoration: 'none',
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  setShowForgotPassword(true);
+                  setError('');
+                }
               }}
-              onMouseEnter={(e) => (e.target.style.textDecoration = 'underline')}
-              onMouseLeave={(e) => (e.target.style.textDecoration = 'none')}
             >
               Forgot password?
             </span>
           </div>
         )}
 
-        {/* Continue Button */}
         <button
-          className="green-btn"
+          className="auth-submit-button"
           onClick={handleContinue}
-          disabled={loading}
-          style={{ opacity: loading ? 0.7 : 1, marginTop: '15px' }}
+          disabled={loading || !email.trim() || !password || (isSignUp && !username.trim())}
         >
-          {loading ? 'Please wait...' : isSignUp ? 'Create Account' : 'Login'}
+          {loading ? 'Please wait...' : isSignUp ? 'Create account' : 'Log in'}
         </button>
 
-        {/* Toggle between Login and Signup */}
-        <p style={{ fontSize: '12px', color: '#666', marginTop: '20px', textAlign: 'center' }}>
+        <p className="auth-switch-copy">
           {isSignUp ? 'Already have an account? ' : 'New to GroceryMart? '}
           <span
-            style={{ color: '#3d17bb', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline' }}
+            role="button"
+            tabIndex={0}
             onClick={() => {
               setIsSignUp(!isSignUp);
               setError('');
             }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                setIsSignUp(!isSignUp);
+                setError('');
+              }
+            }}
           >
-            {isSignUp ? 'Log in' : 'Sign up'}
+            {isSignUp ? 'Log in instead' : 'Create one'}
           </span>
         </p>
-
-        <p style={{ fontSize: '10px', color: '#aaa', marginTop: '15px', textAlign: 'center' }}>
-          By continuing, you agree to our Terms of Service & Privacy Policy
-        </p>
-      </div>
+        <p className="auth-legal-copy">By continuing, you agree to our Terms of Service and Privacy Policy.</p>
+        </section>
+      </main>
+      <footer className="auth-page-footer">© 2026 Grocery Mart · Fresh, made simple</footer>
     </div>
   );
 };

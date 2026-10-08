@@ -9,14 +9,17 @@ const AdminNavbar = ({ onLogout }) => {
     <nav className="admin-navbar">
       <div className="admin-navbar-left">
         <div className="admin-logo">
-          <span className="admin-logo-icon">📊</span>
-          <span className="admin-logo-text">GroceryMart Admin</span>
+          <span className="admin-logo-icon">G</span>
+          <span className="admin-logo-text">Grocery<span>Mart</span><small>ADMIN CONSOLE</small></span>
         </div>
       </div>
 
       <div className="admin-navbar-right">
+        <span className="admin-header-label">Store administration</span>
         <div className="admin-user-info">
-          <div className="admin-avatar">👤</div>
+          <div className="admin-avatar" aria-hidden="true">
+            {(adminUser?.username || 'A').trim().charAt(0).toUpperCase()}
+          </div>
           <div className="admin-user-details">
             <p className="admin-username">{adminUser?.username || 'Administrator'}</p>
             <p className="admin-role">Administrator</p>

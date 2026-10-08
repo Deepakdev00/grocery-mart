@@ -43,6 +43,11 @@ body {
 
 .logo-section {
   user-select: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
 }
 
 .logo-black {

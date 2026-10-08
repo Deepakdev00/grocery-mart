@@ -1,19 +1,26 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../config/prisma');
 const bcrypt = require('bcryptjs');
-const { requireAdmin: adminAuthMiddleware } = require('../middleware/jwtAuth');
+const { requireAdmin: adminAuthMiddleware } = require('../middleware/auth.middleware');
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 // Helper to get client IP
 const getClientIp = (req) => {
-  return req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress || null;
+  return req.ip || req.socket.remoteAddress || null;
 };
 
 // Helper to get user agent
 const getUserAgent = (req) => {
   return req.headers['user-agent'] || null;
+};
+
+const parseLogBoundary = (value, endOfDay = false) => {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  if (endOfDay) date.setUTCHours(23, 59, 59, 999);
+  return date;
 };
 
 // Admin authentication middleware
@@ -500,6 +507,14 @@ router.get('/login-logs', async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
 
     const where = {};
+    const startBoundary = startDate ? parseLogBoundary(startDate) : undefined;
+    const endBoundary = endDate ? parseLogBoundary(endDate, true) : undefined;
+    if ((startDate && !startBoundary) || (endDate && !endBoundary)) {
+      return res.status(400).json({ message: 'Invalid log date filter' });
+    }
+    if (startBoundary && endBoundary && startBoundary > endBoundary) {
+      return res.status(400).json({ message: 'Start date must be before end date' });
+    }
 
     if (userId) {
       where.userId = userId;
@@ -515,12 +530,8 @@ router.get('/login-logs', async (req, res) => {
 
     if (startDate || endDate) {
       where.createdAt = {};
-      if (startDate) {
-        where.createdAt.gte = new Date(startDate);
-      }
-      if (endDate) {
-        where.createdAt.lte = new Date(endDate);
-      }
+      if (startBoundary) where.createdAt.gte = startBoundary;
+      if (endBoundary) where.createdAt.lte = endBoundary;
     } else {
       // Default last 7 days
       const sevenDaysAgo = new Date();
@@ -575,6 +586,7 @@ router.get('/activity-logs', async (req, res) => {
     const {
       userId,
       action,
+      search,
       startDate,
       endDate,
       page = 1,
@@ -586,6 +598,20 @@ router.get('/activity-logs', async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
 
     const where = {};
+    const searchTerm = typeof search === 'string' ? search.trim() : '';
+
+    if (searchTerm.length > 100) {
+      return res.status(400).json({ message: 'Search must be 100 characters or fewer' });
+    }
+
+    const startBoundary = startDate ? parseLogBoundary(startDate) : undefined;
+    const endBoundary = endDate ? parseLogBoundary(endDate, true) : undefined;
+    if ((startDate && !startBoundary) || (endDate && !endBoundary)) {
+      return res.status(400).json({ message: 'Invalid log date filter' });
+    }
+    if (startBoundary && endBoundary && startBoundary > endBoundary) {
+      return res.status(400).json({ message: 'Start date must be before end date' });
+    }
 
     if (userId) {
       where.userId = userId;
@@ -595,14 +621,18 @@ router.get('/activity-logs', async (req, res) => {
       where.action = action;
     }
 
+    if (searchTerm) {
+      where.OR = [
+        { action: { contains: searchTerm, mode: 'insensitive' } },
+        { details: { contains: searchTerm, mode: 'insensitive' } },
+        { ipAddress: { contains: searchTerm, mode: 'insensitive' } },
+      ];
+    }
+
     if (startDate || endDate) {
       where.createdAt = {};
-      if (startDate) {
-        where.createdAt.gte = new Date(startDate);
-      }
-      if (endDate) {
-        where.createdAt.lte = new Date(endDate);
-      }
+      if (startBoundary) where.createdAt.gte = startBoundary;
+      if (endBoundary) where.createdAt.lte = endBoundary;
     }
 
     const [total, logs] = await Promise.all([

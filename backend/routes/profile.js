@@ -1,9 +1,8 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../config/prisma');
 const bcrypt = require('bcryptjs');
-const { requireUser: authMiddleware } = require('../middleware/jwtAuth');
+const { requireUser: authMiddleware } = require('../middleware/auth.middleware');
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 // GET /api/profile - Get user profile

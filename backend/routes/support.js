@@ -1,11 +1,10 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../config/prisma');
 const {
   requireUser: authMiddleware,
   requireAdmin: adminAuthMiddleware
-} = require('../middleware/jwtAuth');
+} = require('../middleware/auth.middleware');
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 // POST /api/support/tickets - Create support ticket (user)
